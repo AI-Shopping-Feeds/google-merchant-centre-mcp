@@ -12,7 +12,7 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 > **MCP server for Google Merchant Center, built on Merchant API v1.**
-> 126 tools, MIT-licensed, `pip install`-able. Drive your Google Shopping
+> 163 tools, MIT-licensed, `pip install`-able. Drive your Google Shopping
 > feed, products, inventory, Reports, promotions, returns, and account
 > configuration in natural language from Claude Desktop, Claude Code, or any
 > MCP-compatible client.
@@ -23,7 +23,7 @@
 > |---|---|---|---|---|---|
 > | Adzviser / Catchr / Windsor.ai / Pipedream | Paid hosted SaaS | varies | proprietary | sign-up | varies |
 > | [archpeng/GMC-mcp-server](https://github.com/archpeng/GMC-mcp-server) | Self-hosted | **Content API v2.1** (deprecated 2026-08) | none declared | git clone | 34 |
-> | **`gmc-mcp` (this package)** | **Self-hosted** | **Merchant API v1** (future-proof) | **MIT** | **`pip install gmc-mcp`** | **126** |
+> | **`gmc-mcp` (this package)** | **Self-hosted** | **Merchant API v1** (future-proof) | **MIT** | **`pip install gmc-mcp`** | **163** |
 >
 > Pick this if you want: future-proof API, an actual OSS license, PyPI install,
 > a larger toolset, audit log + rollback + dry-run safety, and credentials that
@@ -33,6 +33,17 @@ Built on **Merchant API v1** (replaces Content API for Shopping; v1beta was
 discontinued 2026-02-28). Safe by default: every write is recorded to an
 append-only audit log with `before` snapshots, dry-run is one toggle away, and
 destructive bulk operations require an explicit `confirm` parameter.
+
+> **About this fork:** this is [AI Shopping Feeds](https://github.com/AI-Shopping-Feeds)'s
+> fork of [kiwoongeom/gmc-mcp](https://github.com/kiwoongeom/gmc-mcp). It adds
+> full Merchant API v1 coverage and fixes endpoints that didn't exist in the API
+> (see [CHANGELOG.md](CHANGELOG.md)). The PyPI badges above and `pip install gmc-mcp`
+> refer to the upstream release. Install this fork from GitHub as shown in
+> [Install](#install).
+>
+> **Using an AI agent?** Point it at [`skills/gmc-mcp/SKILL.md`](skills/gmc-mcp/SKILL.md).
+> It covers installing the server, connecting it to the agent's MCP client and
+> using the write tools safely.
 
 ## Why this exists
 
@@ -51,9 +62,9 @@ There are existing MCP services for GMC, but they fit different niches:
 
 `gmc-mcp` was built to fill the gap: a self-hosted package on the **new
 Merchant API v1**, MIT-licensed, on **PyPI**, with audit/rollback/dry-run
-safety and 126 tools across 19 modules.
+safety and 163 tools across 23 modules.
 
-The package gives Claude (or any MCP client) **126 tools** that map directly
+The package gives Claude (or any MCP client) **163 tools** that map directly
 onto the Merchant API v1 surface, so you can do things like:
 
 - *"Show me every disapproved product, grouped by issue code."*
@@ -64,28 +75,42 @@ onto the Merchant API v1 surface, so you can do things like:
 
 ## What's exposed
 
-**126 tools across 19 modules + 4 meta tools.**
+**163 tools: 159 across 23 modules + 4 meta tools.**
+
+Every Merchant API v1 resource method is covered (accounts, conversions,
+datasources, inventories, issueresolution, lfp, notifications, ordertracking,
+products, promotions, quota, reports, reviews). A few tools deliberately call a
+pre-GA version because v1 has no equivalent; their descriptions start with the
+version tag:
+
+- `[v1beta]` `gmc_update_return_policy` (v1 has no `onlineReturnPolicies.patch`)
+  and the four `*_merchant_review*` tools (merchant reviews are v1beta-only).
+- `[ALPHA v1alpha]` the four **product_studio** tools (Product Studio has no
+  v1/v1beta API; may need allowlisting).
 
 | Module | Tools |
 |---|---|
-| **products** | `gmc_list_products`, `gmc_get_product`, `gmc_insert_product`, `gmc_update_product`, `gmc_delete_product`, `gmc_bulk_delete_products`, `gmc_list_disapproved_products` |
-| **inventory** | `gmc_update_regional_inventory`, `gmc_update_local_inventory`, `gmc_list_regional_inventories`, `gmc_list_local_inventories` |
+| **products** | `gmc_list_products`, `gmc_get_product`, `gmc_insert_product`, `gmc_update_product`, `gmc_patch_product`, `gmc_delete_product`, `gmc_bulk_delete_products`, `gmc_list_disapproved_products` |
+| **inventory** | `gmc_update_regional_inventory`, `gmc_update_local_inventory`, `gmc_list_regional_inventories`, `gmc_list_local_inventories`, `gmc_delete_local_inventory`, `gmc_delete_regional_inventory` |
 | **issues** | `gmc_list_account_issues`, `gmc_get_product_status`, `gmc_summarize_product_issues` |
+| **issue_resolution** | `gmc_render_account_issues`, `gmc_render_product_issues`, `gmc_trigger_issue_action`, `gmc_list_aggregate_product_statuses` |
 | **reports** | `gmc_query_report`, `gmc_product_performance`, `gmc_price_competitiveness`, `gmc_best_sellers`, `gmc_zero_click_products`, `gmc_revenue_by_brand`, `gmc_category_performance`, `gmc_competitive_visibility_top_merchants`, `gmc_price_insights`, `gmc_demoted_products` |
 | **promotions** | `gmc_list_promotions`, `gmc_get_promotion`, `gmc_insert_promotion` |
-| **accounts** | `gmc_get_account`, `gmc_get_business_info`, `gmc_update_business_info`, `gmc_list_users`, `gmc_add_user`, `gmc_remove_user`, `gmc_get_shipping_settings`, `gmc_update_shipping_settings`, `gmc_list_programs`, `gmc_request_program_review`, `gmc_get_program_review` |
-| **regions** | `gmc_list_regions`, `gmc_get_region`, `gmc_create_region`, `gmc_update_region`, `gmc_delete_region` |
-| **notifications** | `gmc_list_subscriptions`, `gmc_subscribe`, `gmc_unsubscribe` |
-| **feeds** | `gmc_list_datasources`, `gmc_get_datasource`, `gmc_create_supplemental_feed`, `gmc_create_primary_feed`, `gmc_delete_datasource`, `gmc_fetch_datasource` |
+| **accounts** | `gmc_get_account`, `gmc_list_accounts`, `gmc_list_subaccounts`, `gmc_update_account`, `gmc_delete_account`, `gmc_create_and_configure_account`, `gmc_create_test_account`, `gmc_get_business_info`, `gmc_update_business_info`, `gmc_list_users`, `gmc_add_user`, `gmc_remove_user`, `gmc_get_user`, `gmc_update_user`, `gmc_verify_self`, `gmc_get_shipping_settings`, `gmc_update_shipping_settings`, `gmc_list_programs`, `gmc_get_program`, `gmc_enable_program`, `gmc_disable_program`, `gmc_get_developer_registration`, `gmc_register_gcp`, `gmc_unregister_gcp`, `gmc_get_account_for_gcp_registration` |
+| **regions** | `gmc_list_regions`, `gmc_get_region`, `gmc_create_region`, `gmc_update_region`, `gmc_delete_region`, `gmc_batch_create_regions`, `gmc_batch_update_regions`, `gmc_batch_delete_regions` |
+| **notifications** | `gmc_list_subscriptions`, `gmc_subscribe`, `gmc_unsubscribe`, `gmc_get_subscription`, `gmc_update_subscription` |
+| **feeds** | `gmc_list_datasources`, `gmc_get_datasource`, `gmc_create_supplemental_feed`, `gmc_create_primary_feed`, `gmc_create_datasource`, `gmc_update_datasource`, `gmc_get_datasource_file_upload`, `gmc_delete_datasource`, `gmc_fetch_datasource` |
 | **return_policies** | `gmc_list_return_policies`, `gmc_get_return_policy`, `gmc_create_return_policy`, `gmc_update_return_policy`, `gmc_delete_return_policy` |
 | **homepage** | `gmc_get_homepage`, `gmc_update_homepage`, `gmc_claim_homepage`, `gmc_unclaim_homepage` |
-| **account_config** | `gmc_get_business_identity`, `gmc_update_business_identity`, `gmc_get_checkout_settings`, `gmc_create_checkout_settings`, `gmc_update_checkout_settings`, `gmc_delete_checkout_settings`, `gmc_get_automatic_improvements`, `gmc_update_automatic_improvements`, `gmc_get_autofeed_settings`, `gmc_update_autofeed_settings`, `gmc_get_account_tax`, `gmc_update_account_tax`, `gmc_get_email_preferences`, `gmc_update_email_preferences`, `gmc_get_latest_tos`, `gmc_list_tos_agreement_states`, `gmc_accept_tos` |
-| **quotas** | `gmc_list_quotas` |
+| **account_config** | `gmc_get_business_identity`, `gmc_update_business_identity`, `gmc_get_checkout_settings`, `gmc_create_checkout_settings`, `gmc_update_checkout_settings`, `gmc_delete_checkout_settings`, `gmc_get_automatic_improvements`, `gmc_update_automatic_improvements`, `gmc_get_autofeed_settings`, `gmc_update_autofeed_settings`, `gmc_get_email_preferences`, `gmc_update_email_preferences`, `gmc_get_latest_tos`, `gmc_get_tos`, `gmc_get_tos_agreement_state`, `gmc_retrieve_tos_agreement_for_application`, `gmc_accept_tos` |
+| **quotas** | `gmc_list_quotas`, `gmc_list_account_limits`, `gmc_get_account_limit` |
 | **reviews** | `gmc_list_merchant_reviews`, `gmc_get_merchant_review`, `gmc_insert_merchant_review`, `gmc_delete_merchant_review`, `gmc_list_product_reviews`, `gmc_get_product_review`, `gmc_insert_product_review`, `gmc_delete_product_review` |
 | **conversions** | `gmc_list_conversion_sources`, `gmc_get_conversion_source`, `gmc_create_conversion_source`, `gmc_update_conversion_source`, `gmc_delete_conversion_source`, `gmc_undelete_conversion_source` |
-| **omnichannel** | `gmc_list_omnichannel_settings`, `gmc_get_omnichannel_settings`, `gmc_create_omnichannel_settings`, `gmc_update_omnichannel_settings`, `gmc_request_inventory_verification`, `gmc_link_gbp_account`, `gmc_list_gbp_accounts` |
+| **omnichannel** | `gmc_list_omnichannel_settings`, `gmc_get_omnichannel_settings`, `gmc_create_omnichannel_settings`, `gmc_update_omnichannel_settings`, `gmc_request_inventory_verification`, `gmc_find_lfp_providers`, `gmc_link_lfp_provider`, `gmc_link_gbp_account`, `gmc_list_gbp_accounts` |
 | **lfp** | `gmc_lfp_list_stores`, `gmc_lfp_get_store`, `gmc_lfp_insert_store`, `gmc_lfp_delete_store`, `gmc_lfp_insert_inventory`, `gmc_lfp_insert_sale`, `gmc_lfp_get_merchant_state` |
-| **mca** | `gmc_list_relationships`, `gmc_get_relationship`, `gmc_update_relationship`, `gmc_create_aggregation`, `gmc_delete_aggregation`, `gmc_list_account_services`, `gmc_propose_account_service`, `gmc_approve_account_service`, `gmc_reject_account_service` |
+| **mca** | `gmc_list_relationships`, `gmc_get_relationship`, `gmc_update_relationship`, `gmc_list_account_services`, `gmc_get_account_service`, `gmc_propose_account_service`, `gmc_approve_account_service`, `gmc_reject_account_service` |
+| **order_tracking** | `gmc_create_order_tracking_signal` |
+| **product_studio** | `gmc_generate_product_text_suggestions`, `gmc_generate_product_image_background`, `gmc_remove_product_image_background`, `gmc_upscale_product_image` |
 | **bulk** | `gmc_bulk_update_regional_prices`, `gmc_bulk_set_availability` |
 | **diagnostics** | `gmc_health_check`, `gmc_rollback`, `gmc_export_all`, `gmc_diff_with_shopify` |
 | **meta** | `gmc_describe_server`, `gmc_audit_lookup`, `gmc_audit_tail`, `gmc_set_dry_run` |
@@ -94,15 +119,25 @@ CLI also exposes: `gmc-mcp run`, `auth-init`, `register-gcp`, `webhook`, `descri
 
 ## Install
 
+Run this fork straight from GitHub with [uv](https://docs.astral.sh/uv/):
+
 ```bash
-pip install gmc-mcp
+uvx --from git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git gmc-mcp run
 ```
+
+or install it:
+
+```bash
+pip install "git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git"
+```
+
+Pin a release by adding `@vX.Y.Z` to the URL.
 
 For development:
 
 ```bash
-git clone https://github.com/kiwoongeom/gmc-mcp
-cd gmc-mcp
+git clone https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp
+cd google-merchant-centre-mcp
 pip install -e ".[dev,test]"
 pre-commit install
 ```
@@ -146,16 +181,26 @@ gmc-mcp describe              # prints the resolved config
 python examples/quickstart.py  # makes one read against the Merchant API
 ```
 
-### 6. Wire into Claude
+### 6. Wire into your MCP client
 
-Drop this into `%APPDATA%/Claude/claude_desktop_config.json` (Desktop) or `~/.claude/settings.json` (Code):
+**Claude Code:**
+
+```bash
+claude mcp add gmc --scope user \
+  -e GMC_ACCOUNT_ID=1234567890 \
+  -e GMC_SERVICE_ACCOUNT_KEY=/abs/path/to/service-account.json \
+  -- uvx --from git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git gmc-mcp run
+```
+
+**Claude Desktop, Cursor, VS Code and others:** add this to the client's MCP
+config (`claude_desktop_config.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, ...):
 
 ```json
 {
   "mcpServers": {
     "gmc": {
-      "command": "gmc-mcp",
-      "args": ["run"],
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git", "gmc-mcp", "run"],
       "env": {
         "GMC_ACCOUNT_ID": "1234567890",
         "GMC_SERVICE_ACCOUNT_KEY": "/abs/path/to/service-account.json"
@@ -235,7 +280,9 @@ GMC_DRY_RUN=true gmc-mcp run
 [gmc_update_regional_inventory(...) → {"_dry_run": true, ...}]
 ```
 
-Reads always go through; only writes are skipped.
+Reads always go through; only writes are skipped. POST endpoints that don't
+change anything (Reports `search`, Issue Resolution `render*`, Product Studio
+generation) are treated as reads, so they also run in dry-run mode.
 
 ## Reports query examples
 

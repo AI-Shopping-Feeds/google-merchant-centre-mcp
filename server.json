@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.kiwoongeom/gmc-mcp",
-  "description": "MIT-licensed pip-installable MCP for Google Merchant Center on Merchant API v1 (126 tools).",
+  "description": "MIT-licensed pip-installable MCP for Google Merchant Center on Merchant API v1 (163 tools).",
   "repository": {
     "url": "https://github.com/kiwoongeom/gmc-mcp",
     "source": "github"
