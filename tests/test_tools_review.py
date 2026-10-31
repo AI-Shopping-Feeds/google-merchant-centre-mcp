@@ -213,31 +213,88 @@ def test_request_review_rejects_bad_answer(client: MerchantClient) -> None:
 
 
 @respx.mock
-def test_list_disapproved_review_options(client: MerchantClient) -> None:
+def test_disapprovals_overview(client: MerchantClient) -> None:
+    client.config.dry_run = True  # reads must still go through
+    issue = {
+        "type": {"code": "price_mismatch", "canonicalAttribute": "price"},
+        "severity": {
+            "aggregatedSeverity": "DISAPPROVED",
+            "severityPerReportingContext": [
+                {"reportingContext": "SHOPPING_ADS", "disapprovedCountries": ["GB"]}
+            ],
+        },
+        "resolution": "MERCHANT_ACTION",
+    }
     search = respx.post(f"{BASE_URL}/reports/v1/{ACCT}/reports:search").mock(
         return_value=httpx.Response(
             200,
             json={
                 "results": [
-                    {"productView": {"id": "en~US~SKU1", "offerId": "SKU1", "title": "A"}},
-                    {"productView": {"id": "en~US~SKU2", "offerId": "SKU2", "title": "B"}},
+                    {
+                        "productView": {
+                            "id": "online~en~GB~SKU2",
+                            "offerId": "SKU2",
+                            "clickPotentialRank": "900",
+                            "itemIssues": [issue],
+                        }
+                    },
+                    {
+                        "productView": {
+                            "id": "online~en~GB~SKU1",
+                            "offerId": "SKU1",
+                            "title": "A",
+                            "clickPotential": "HIGH",
+                            "clickPotentialRank": "3",
+                            "itemIssues": [issue],
+                        }
+                    },
                 ]
             },
         )
     )
-    respx.post(f"{IR}/products/en~US~SKU1:renderproductissues").mock(
+    respx.post(f"{IR}/products/online~en~GB~SKU1:renderproductissues").mock(
         return_value=httpx.Response(200, json=RENDERED)
     )
-    respx.post(f"{IR}/products/en~US~SKU2:renderproductissues").mock(
+    respx.post(f"{IR}/products/online~en~GB~SKU2:renderproductissues").mock(
         return_value=httpx.Response(200, json={"renderedIssues": []})
     )
 
-    out = _build(client)["gmc_list_disapproved_review_options"](max_products=10)
+    out = _build(client)["gmc_disapprovals_overview"](max_products=10)
 
     query = json.loads(search.calls.last.request.content)["query"]
-    assert "NOT_ELIGIBLE_OR_DISAPPROVED" in query
+    assert "item_issues" in query
     assert query.endswith("LIMIT 10")
-    assert out["products_checked"] == 2
-    assert out["products_with_review_actions"] == 1
-    assert out["reviews_requestable_now"] == 1
-    assert out["products"][0]["offer_id"] == "SKU1"
+    # Highest click potential (lowest rank) comes first.
+    assert [p["offer_id"] for p in out["products"]] == ["SKU1", "SKU2"]
+    first = out["products"][0]
+    assert first["reasons"] == [
+        {
+            "code": "price_mismatch",
+            "attribute": "price",
+            "severity": "DISAPPROVED",
+            "resolution": "MERCHANT_ACTION",
+            "where": {"SHOPPING_ADS": {"disapproved": ["GB"]}},
+        }
+    ]
+    assert first["review_options"][0]["actions"][0]["action_context"] == "CTX-1"
+    assert out["summary"]["top_reasons"] == [
+        {"code": "price_mismatch", "attribute": "price", "products": 2}
+    ]
+    assert out["summary"]["reviews_requestable_now"] == 1
+    assert _audit_entries(client) == []
+
+
+@respx.mock
+def test_disapprovals_overview_without_review_options(client: MerchantClient) -> None:
+    respx.post(f"{BASE_URL}/reports/v1/{ACCT}/reports:search").mock(
+        return_value=httpx.Response(
+            200, json={"results": [{"productView": {"id": "en~GB~SKU1", "offerId": "SKU1"}}]}
+        )
+    )
+    render = respx.post(f"{IR}/products/en~GB~SKU1:renderproductissues")
+
+    out = _build(client)["gmc_disapprovals_overview"](include_review_options=False)
+
+    assert not render.called
+    assert "review_options" not in out["products"][0]
+    assert "reviews_requestable_now" not in out["summary"]

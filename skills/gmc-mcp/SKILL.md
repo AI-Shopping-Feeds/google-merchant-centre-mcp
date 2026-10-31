@@ -75,7 +75,7 @@ All tools start with `gmc_`. The main groups:
 - **Issues:** `list_account_issues`, `get_product_status`,
   `summarize_product_issues`, `render_account_issues`, `render_product_issues`,
   `list_aggregate_product_statuses`.
-- **Review requests:** `list_review_options`, `list_disapproved_review_options`,
+- **Review requests:** `list_review_options`, `disapprovals_overview`,
   `request_review` (`trigger_issue_action` is the raw version).
 - **Reports:** `query_report` (Merchant Reports query language) plus shortcuts
   such as `product_performance`, `price_competitiveness`, `best_sellers`,
@@ -122,11 +122,14 @@ versions, which Google may change.
 
 ## 5. Recipes
 
-**Disapproval audit:** `gmc_summarize_product_issues` for counts by issue,
-then `gmc_render_product_issues` on the worst products for fix instructions.
+**Disapproval audit:** `gmc_disapprovals_overview` lists disapproved products
+(most valuable first) with their reasons, a count of products per issue, and
+review options. Present it grouped by top reason. For account-wide counts across
+every product, use `gmc_summarize_product_issues`. For Google's full fix
+instructions on one product, use `gmc_render_product_issues`.
 
 **Request a review of a disapproval:**
-1. `gmc_list_disapproved_review_options` (or `gmc_list_review_options` with a
+1. `gmc_disapprovals_overview` (or `gmc_list_review_options` with a
    `product_id`, or with none for account issues).
 2. For an action with `kind: "request_in_api"` and `available: true`, show the
    user the issue, the flow choices (e.g. "I fixed the issue" or "I

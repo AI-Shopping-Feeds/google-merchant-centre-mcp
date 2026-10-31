@@ -91,7 +91,7 @@ version tag:
 | **products** | `gmc_list_products`, `gmc_get_product`, `gmc_insert_product`, `gmc_update_product`, `gmc_patch_product`, `gmc_delete_product`, `gmc_bulk_delete_products`, `gmc_list_disapproved_products` |
 | **inventory** | `gmc_update_regional_inventory`, `gmc_update_local_inventory`, `gmc_list_regional_inventories`, `gmc_list_local_inventories`, `gmc_delete_local_inventory`, `gmc_delete_regional_inventory` |
 | **issues** | `gmc_list_account_issues`, `gmc_get_product_status`, `gmc_summarize_product_issues` |
-| **issue_resolution** | `gmc_render_account_issues`, `gmc_render_product_issues`, `gmc_trigger_issue_action`, `gmc_list_review_options`, `gmc_request_review`, `gmc_list_disapproved_review_options`, `gmc_list_aggregate_product_statuses` |
+| **issue_resolution** | `gmc_render_account_issues`, `gmc_render_product_issues`, `gmc_trigger_issue_action`, `gmc_list_review_options`, `gmc_request_review`, `gmc_disapprovals_overview`, `gmc_list_aggregate_product_statuses` |
 | **reports** | `gmc_query_report`, `gmc_product_performance`, `gmc_price_competitiveness`, `gmc_best_sellers`, `gmc_zero_click_products`, `gmc_revenue_by_brand`, `gmc_category_performance`, `gmc_competitive_visibility_top_merchants`, `gmc_price_insights`, `gmc_demoted_products` |
 | **promotions** | `gmc_list_promotions`, `gmc_get_promotion`, `gmc_insert_promotion` |
 | **accounts** | `gmc_get_account`, `gmc_list_accounts`, `gmc_list_subaccounts`, `gmc_update_account`, `gmc_delete_account`, `gmc_create_and_configure_account`, `gmc_create_test_account`, `gmc_get_business_info`, `gmc_update_business_info`, `gmc_list_users`, `gmc_add_user`, `gmc_remove_user`, `gmc_get_user`, `gmc_update_user`, `gmc_verify_self`, `gmc_get_shipping_settings`, `gmc_update_shipping_settings`, `gmc_list_programs`, `gmc_get_program`, `gmc_enable_program`, `gmc_disable_program`, `gmc_get_developer_registration`, `gmc_register_gcp`, `gmc_unregister_gcp`, `gmc_get_account_for_gcp_registration` |
@@ -282,13 +282,23 @@ Reads always go through; only writes are skipped. POST endpoints that don't
 change anything (Reports `search`, Issue Resolution `render*`, Product Studio
 generation) are treated as reads, so they also run in dry-run mode.
 
-## Requesting a review of a disapproval
+## Disapprovals: reasons and review requests
+
+`gmc_disapprovals_overview` gives you everything in one call. It returns your
+disapproved products, most valuable first (by click potential). Each product
+shows:
+
+- why it's disapproved: issue code, affected attribute, severity, whether the
+  fix is yours to make, and where it's disapproved (destination and countries)
+- its review options
+
+A summary counts products per issue so the biggest problems stand out.
 
 The Merchant API has no single "request review" endpoint. Google returns review
 and appeal actions with each rendered issue, and you submit them with
 `triggeraction`. These tools wrap that flow:
 
-1. `gmc_list_disapproved_review_options` checks disapproved products in bulk, or
+1. `gmc_disapprovals_overview` checks disapproved products in bulk, or
    `gmc_list_review_options(product_id=...)` checks one product (leave out
    `product_id` for account issues). Each issue shows its review actions,
    whether they're available now, why not if they aren't (e.g. a review is
@@ -298,8 +308,8 @@ and appeal actions with each rendered issue, and you submit them with
    It's audited and respects dry-run.
 
 ```
-> Which disapproved products can I request a review for?
-[gmc_list_disapproved_review_options() → 3 products, 2 requestable now]
+> Show me my disapproved products and why, and which ones I can request a review for.
+[gmc_disapprovals_overview() → 40 products, top reason price_mismatch (18), 6 requestable now]
 
 > I've fixed the price mismatch on SKU1, request a review.
 [gmc_request_review(action_context="...", flow_id="...", answers={"...": true})]

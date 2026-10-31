@@ -127,6 +127,33 @@ def _review_options(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return issues
 
 
+def _item_issue(issue: dict[str, Any]) -> dict[str, Any]:
+    """Simplifies a Reports ItemIssue to code, attribute, severity, fix type and where it applies."""
+    severity = issue.get("severity") or {}
+    where = {
+        ctx.get("reportingContext"): {
+            k: v
+            for k, v in (
+                ("disapproved", ctx.get("disapprovedCountries")),
+                ("demoted", ctx.get("demotedCountries")),
+            )
+            if v
+        }
+        for ctx in severity.get("severityPerReportingContext", []) or []
+    }
+    out: dict[str, Any] = {
+        "code": (issue.get("type") or {}).get("code"),
+        "severity": severity.get("aggregatedSeverity"),
+        "resolution": issue.get("resolution"),
+    }
+    attribute = (issue.get("type") or {}).get("canonicalAttribute")
+    if attribute:
+        out["attribute"] = attribute
+    if where:
+        out["where"] = where
+    return out
+
+
 def _input_value(field_id: str, answer: Any) -> dict[str, Any]:
     if isinstance(answer, bool):
         return {"inputFieldId": field_id, "checkboxInputValue": {"value": answer}}
@@ -287,20 +314,31 @@ def register(mcp, client: MerchantClient) -> None:
         )
 
     @mcp.tool()
-    def gmc_list_disapproved_review_options(
-        max_products: int = 25, language_code: str = "en"
+    def gmc_disapprovals_overview(
+        max_products: int = 50,
+        include_review_options: bool = True,
+        language_code: str = "en",
     ) -> dict[str, Any]:
-        """Check review options for many disapproved products at once.
+        """One-call view of disapproved products: why each is disapproved, and whether a review can be requested.
 
-        Finds disapproved products with a Reports query, then runs
-        gmc_list_review_options on each (one API call per product, up to
-        max_products). Returns only products that have a review-type action,
-        with counts of how many can be requested now. Request each review with
-        gmc_request_review after the user confirms.
+        Lists disapproved products from a Reports query with each product's
+        issues (code, affected attribute, severity, whether the fix is a
+        merchant action, and the countries/destinations where it is
+        disapproved), most valuable products first (by click potential).
+        `summary.top_reasons` counts products per issue code.
+
+        With include_review_options (default), also renders each product's
+        issues and adds `review_options`: the review/appeal actions, whether
+        each is available now, and what gmc_request_review needs. That costs
+        one extra API call per product. Actions of kind 'external' include a
+        Merchant Center / Help Center `url`.
         Read-only: works in dry-run mode and is not audited.
+
+        max_products: how many disapproved products to return (Reports LIMIT).
         """
         query = (
-            "SELECT id, offer_id, title FROM product_view "
+            "SELECT id, offer_id, title, feed_label, item_issues, click_potential, "
+            "click_potential_rank FROM product_view "
             "WHERE aggregated_reporting_context_status = 'NOT_ELIGIBLE_OR_DISAPPROVED' "
             f"LIMIT {int(max_products)}"
         )
@@ -310,36 +348,46 @@ def register(mcp, client: MerchantClient) -> None:
             json_body={"query": query},
             read_only=True,
         )
-        products_out = []
+        views = [r.get("productView") or {} for r in payload.get("results", []) or []]
+        views.sort(key=lambda v: int(v.get("clickPotentialRank") or 10**9))
+
+        reason_counts: dict[tuple[str, str | None], int] = {}
         requestable = 0
-        for row in payload.get("results", []) or []:
-            view = row.get("productView") or {}
-            product_id = view.get("id")
-            if not product_id:
-                continue
-            issues = _review_options(_render_for_review(product_id, language_code, None))
-            if not issues:
-                continue
-            requestable += sum(
-                1
-                for issue in issues
-                for a in issue["actions"]
-                if a["kind"] == "request_in_api" and a["available"]
-            )
-            products_out.append(
-                {
-                    "product_id": product_id,
-                    "offer_id": view.get("offerId"),
-                    "title": view.get("title"),
-                    "issues": issues,
-                }
-            )
-        return {
-            "products_checked": len(payload.get("results", []) or []),
-            "products_with_review_actions": len(products_out),
-            "reviews_requestable_now": requestable,
-            "products": products_out,
+        products_out = []
+        for view in views:
+            reasons = [_item_issue(i) for i in view.get("itemIssues", []) or []]
+            for r in reasons:
+                key = (r["code"], r.get("attribute"))
+                reason_counts[key] = reason_counts.get(key, 0) + 1
+            product: dict[str, Any] = {
+                "product_id": view.get("id"),
+                "offer_id": view.get("offerId"),
+                "title": view.get("title"),
+                "feed_label": view.get("feedLabel"),
+                "click_potential": view.get("clickPotential"),
+                "reasons": reasons,
+            }
+            if include_review_options and view.get("id"):
+                options = _review_options(_render_for_review(view["id"], language_code, None))
+                requestable += sum(
+                    1
+                    for issue in options
+                    for a in issue["actions"]
+                    if a["kind"] == "request_in_api" and a["available"]
+                )
+                product["review_options"] = options
+            products_out.append(product)
+
+        summary: dict[str, Any] = {
+            "disapproved_products_returned": len(products_out),
+            "top_reasons": [
+                {"code": code, "attribute": attr, "products": n}
+                for (code, attr), n in sorted(reason_counts.items(), key=lambda kv: -kv[1])[:15]
+            ],
         }
+        if include_review_options:
+            summary["reviews_requestable_now"] = requestable
+        return {"summary": summary, "products": products_out, "_query": query}
 
     @mcp.tool()
     def gmc_list_aggregate_product_statuses(
