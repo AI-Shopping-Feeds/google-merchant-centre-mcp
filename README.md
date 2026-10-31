@@ -219,3 +219,7 @@ Issues and pull requests are welcome on [this repository](https://github.com/AI-
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Licensed under the [MIT License](LICENSE). Based on [kiwoongeom/gmc-mcp](https://github.com/kiwoongeom/gmc-mcp) by eric.eom.
+
+---
+
+Try out [AI Shopping Feeds](https://aishoppingfeeds.com/), our shopping feed management tool (including Google Shopping feeds).
