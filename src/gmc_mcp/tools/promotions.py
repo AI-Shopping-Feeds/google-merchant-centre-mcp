@@ -34,12 +34,14 @@ def register(mcp, client: MerchantClient) -> None:
 
         promotion: full Promotion object (promotionId, contentLanguage, targetCountry,
                    redemptionChannel, productApplicability, offerType, longTitle, ...).
-        data_source: data source name like 'accounts/123/dataSources/456'
+        data_source: promotion data source name like 'accounts/123/dataSources/456'
+        Sent as InsertPromotionRequest {"promotion": ..., "dataSource": ...}. Upsert
+        semantics. Merchant API v1 has no promotion delete; end a promotion by
+        re-inserting it with an expired promotionEffectiveTimePeriod.
         """
         return client.request(
             "POST",
             f"promotions/v1/{acct}/promotions:insert",
-            params={"dataSource": data_source},
-            json_body=promotion,
+            json_body={"promotion": promotion, "dataSource": data_source},
             op="insert_promotion",
         )

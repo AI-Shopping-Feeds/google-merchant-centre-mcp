@@ -138,3 +138,50 @@ def register(mcp, client: MerchantClient) -> None:
             )
         )
         return {"product_id": product_id, "count": len(items), "local_inventories": items}
+
+    def _find(kind: str, items_key: str, field: str, product_id: str, value: str) -> Any | None:
+        """Best-effort `before` snapshot: scan the product's inventories for one entry."""
+        try:
+            for item in client.paginate(
+                "GET",
+                f"inventories/v1/{acct}/products/{product_id}/{kind}",
+                items_key=items_key,
+                max_pages=10,
+            ):
+                if item.get(field) == value:
+                    return item
+        except Exception:
+            return None
+        return None
+
+    @mcp.tool()
+    def gmc_delete_local_inventory(product_id: str, store_code: str) -> dict[str, Any]:
+        """Delete a product's local inventory for one store.
+
+        product_id: full product ID. store_code: the store's code.
+        May take up to an hour to propagate; wait before re-inserting the same store.
+        """
+        before = _find("localInventories", "localInventories", "storeCode", product_id, store_code)
+        client.request(
+            "DELETE",
+            f"inventories/v1/{acct}/products/{product_id}/localInventories/{store_code}",
+            op="delete_local_inventory",
+            before=before,
+        )
+        return {"deleted": {"product_id": product_id, "store_code": store_code}}
+
+    @mcp.tool()
+    def gmc_delete_regional_inventory(product_id: str, region: str) -> dict[str, Any]:
+        """Delete a product's regional inventory for one region.
+
+        product_id: full product ID. region: region ID (see gmc_list_regions).
+        May take up to an hour to propagate; wait before re-inserting the same region.
+        """
+        before = _find("regionalInventories", "regionalInventories", "region", product_id, region)
+        client.request(
+            "DELETE",
+            f"inventories/v1/{acct}/products/{product_id}/regionalInventories/{region}",
+            op="delete_regional_inventory",
+            before=before,
+        )
+        return {"deleted": {"product_id": product_id, "region": region}}

@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -120,7 +121,7 @@ def auth_init(secrets_path: Path, output_path: Path, port: int) -> None:
     except ImportError as e:  # pragma: no cover
         raise click.ClickException(
             "google-auth-oauthlib is required for auth-init. "
-            "Install it with: pip install gmc-mcp[oauth]"
+            "Install it with: pip install google-auth-oauthlib"
         ) from e
 
     flow = InstalledAppFlow.from_client_secrets_file(str(secrets_path), SCOPES)
@@ -160,7 +161,7 @@ def webhook(host: str, port: int, out_path: Path | None) -> None:
     log = get_logger("webhook")
 
     class Handler(BaseHTTPRequestHandler):
-        def do_POST(self) -> None:  # noqa: N802
+        def do_POST(self) -> None:
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length) if length else b""
             try:

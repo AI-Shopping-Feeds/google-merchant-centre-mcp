@@ -64,13 +64,7 @@ def register(mcp, client: MerchantClient) -> None:
         settings: dict[str, Any],
         update_mask: str | None = None,
     ) -> dict[str, Any]:
-        before = None
-        try:
-            before = client.request(
-                "GET", f"accounts/v1/{acct}/omnichannelSettings/{region_code}"
-            )
-        except Exception:
-            pass
+        before = client.snapshot(f"accounts/v1/{acct}/omnichannelSettings/{region_code}")
         params = {"updateMask": update_mask} if update_mask else None
         return client.request(
             "PATCH",
@@ -87,7 +81,45 @@ def register(mcp, client: MerchantClient) -> None:
         return client.request(
             "POST",
             f"accounts/v1/{acct}/omnichannelSettings/{region_code}:requestInventoryVerification",
+            json_body={},
             op="request_inventory_verification",
+        )
+
+    # ---- LFP providers ----
+
+    @mcp.tool()
+    def gmc_find_lfp_providers(region_code: str, max_pages: int = 5) -> dict[str, Any]:
+        """Find Local Feed Partnership (LFP) providers available in a region.
+
+        region_code: the omnichannel setting's region (e.g. 'US').
+        """
+        items = list(
+            client.paginate(
+                "GET",
+                f"accounts/v1/{acct}/omnichannelSettings/{region_code}/lfpProviders:find",
+                items_key="lfpProviders",
+                max_pages=max_pages,
+            )
+        )
+        return {"count": len(items), "lfp_providers": items}
+
+    @mcp.tool()
+    def gmc_link_lfp_provider(
+        region_code: str, lfp_provider_id: str, external_account_id: str
+    ) -> dict[str, Any]:
+        """Link an LFP provider to this account's omnichannel setting for a region.
+
+        lfp_provider_id: provider ID from gmc_find_lfp_providers (last path segment).
+        external_account_id: this merchant's account ID in the provider's system.
+        """
+        before = client.snapshot(f"accounts/v1/{acct}/omnichannelSettings/{region_code}")
+        return client.request(
+            "POST",
+            f"accounts/v1/{acct}/omnichannelSettings/{region_code}"
+            f"/lfpProviders/{lfp_provider_id}:linkLfpProvider",
+            json_body={"externalAccountId": external_account_id},
+            op="link_lfp_provider",
+            before=before,
         )
 
     # ---- GBP account linkage ----
@@ -101,7 +133,7 @@ def register(mcp, client: MerchantClient) -> None:
         return client.request(
             "POST",
             f"accounts/v1/{acct}/gbpAccounts:linkGbpAccount",
-            json_body={"gbpAccount": gbp_email},
+            json_body={"gbpEmail": gbp_email},
             op="link_gbp_account",
         )
 

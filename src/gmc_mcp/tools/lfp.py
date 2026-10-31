@@ -50,11 +50,7 @@ def register(mcp, client: MerchantClient) -> None:
 
     @mcp.tool()
     def gmc_lfp_delete_store(store_code: str) -> dict[str, Any]:
-        before = None
-        try:
-            before = client.request("GET", f"lfp/v1/{acct}/lfpStores/{store_code}")
-        except Exception:
-            pass
+        before = client.snapshot(f"lfp/v1/{acct}/lfpStores/{store_code}")
         client.request(
             "DELETE", f"lfp/v1/{acct}/lfpStores/{store_code}",
             op="lfp_delete_store", before=before,

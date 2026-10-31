@@ -4,6 +4,38 @@ from typing import Any
 
 from ..client import MerchantClient
 
+REPORTING_STATUSES = {"ELIGIBLE", "ELIGIBLE_LIMITED", "NOT_ELIGIBLE_OR_DISAPPROVED", "PENDING"}
+
+
+def _product_key(p: dict[str, Any]) -> tuple[str, str, str]:
+    return (p.get("offerId") or "", p.get("feedLabel") or "", p.get("contentLanguage") or "")
+
+
+def _keys_with_status(
+    client: MerchantClient, acct: str, status: str
+) -> set[tuple[str, str, str]]:
+    """(offerId, feedLabel, contentLanguage) for every product_view row with `status`."""
+    query = (
+        "SELECT id, offer_id, feed_label, language_code "
+        "FROM product_view "
+        f"WHERE aggregated_reporting_context_status = '{status}'"
+    )
+    keys: set[tuple[str, str, str]] = set()
+    body: dict[str, Any] = {"query": query}
+    while True:
+        payload = client.request(
+            "POST", f"reports/v1/{acct}/reports:search", json_body=body, read_only=True
+        )
+        for row in payload.get("results", []) or []:
+            pv = row.get("productView") or {}
+            keys.add(
+                (pv.get("offerId") or "", pv.get("feedLabel") or "", pv.get("languageCode") or "")
+            )
+        token = payload.get("nextPageToken")
+        if not token:
+            return keys
+        body = {"query": query, "pageToken": token}
+
 
 def register(mcp, client: MerchantClient) -> None:
     acct = client.account_path()
@@ -78,11 +110,7 @@ def register(mcp, client: MerchantClient) -> None:
         product: new product input — full body, since insert overwrites
         data_source: full data source name
         """
-        before = None
-        try:
-            before = client.request("GET", f"products/v1/{acct}/products/{product_id}")
-        except Exception:
-            pass
+        before = client.snapshot(f"products/v1/{acct}/products/{product_id}")
         return client.request(
             "POST",
             f"products/v1/{acct}/productInputs:insert",
@@ -93,17 +121,45 @@ def register(mcp, client: MerchantClient) -> None:
         )
 
     @mcp.tool()
+    def gmc_patch_product(
+        product_id: str,
+        product: dict[str, Any],
+        data_source: str,
+        update_mask: str,
+    ) -> dict[str, Any]:
+        """Partially update a product input via productInputs.patch (Merchant API v1).
+
+        Unlike gmc_update_product (insert = full overwrite), only the fields named in
+        update_mask are changed.
+
+        product_id: existing product input ID (contentLanguage~feedLabel~offerId, or the
+            legacy channel~contentLanguage~feedLabel~offerId form).
+        product: ProductInput body containing the new values, e.g.
+            {"productAttributes": {"title": "New title", "price": {
+                "amountMicros": "19990000", "currencyCode": "USD"}}}
+        data_source: data source the product input belongs to. Only API data sources
+            (primary or supplemental) can be patched.
+        update_mask: comma-separated field paths, e.g. 'productAttributes.title,
+            productAttributes.price'. Use 'customAttributes' for custom attributes.
+        """
+        before = client.snapshot(f"products/v1/{acct}/products/{product_id}")
+        return client.request(
+            "PATCH",
+            f"products/v1/{acct}/productInputs/{product_id}",
+            params={"dataSource": data_source, "updateMask": update_mask},
+            json_body=product,
+            op="patch_product",
+            before=before,
+        )
+
+    @mcp.tool()
     def gmc_delete_product(product_id: str, data_source: str) -> dict[str, Any]:
         """Delete a product input.
 
         product_id: full product ID (channel~lang~feedLabel~offerId)
         data_source: data source the product belongs to
         """
-        before = None
-        try:
-            before = client.request("GET", f"products/v1/{acct}/products/{product_id}")
-        except Exception:
-            pass
+        before = client.snapshot(f"products/v1/{acct}/products/{product_id}")
         client.request(
             "DELETE",
             f"products/v1/{acct}/productInputs/{product_id}",
@@ -122,8 +178,10 @@ def register(mcp, client: MerchantClient) -> None:
         """Bulk-delete product inputs. DESTRUCTIVE — requires confirm='DELETE'.
 
         confirm: must be the exact string 'DELETE' (case-sensitive) or this tool refuses.
-        filter_status: only delete products whose `aggregatedReportingContextStatus`
-            matches this value (e.g. 'NOT_ELIGIBLE_OR_DISAPPROVED'). None = delete ALL.
+        filter_status: only delete products whose Reports `aggregated_reporting_context_status`
+            matches this value: 'ELIGIBLE' | 'ELIGIBLE_LIMITED' | 'NOT_ELIGIBLE_OR_DISAPPROVED'
+            | 'PENDING'. Matching is done on (offerId, feedLabel, contentLanguage) via a
+            product_view query. None = delete ALL.
         max_delete: hard cap on deletions to prevent runaway calls.
 
         Each product's own `dataSource` field is used as the dataSource query parameter,
@@ -137,6 +195,15 @@ def register(mcp, client: MerchantClient) -> None:
                 "max_delete": max_delete,
             }
 
+        wanted: set[tuple[str, str, str]] | None = None
+        if filter_status:
+            status = filter_status.upper()
+            if status not in REPORTING_STATUSES:
+                return {
+                    "error": f"filter_status must be one of {sorted(REPORTING_STATUSES)}",
+                }
+            wanted = _keys_with_status(client, acct, status)
+
         # Collect products
         candidates: list[dict[str, Any]] = []
         params: dict[str, Any] = {"pageSize": 250}
@@ -145,15 +212,8 @@ def register(mcp, client: MerchantClient) -> None:
                 "GET", f"products/v1/{acct}/products", params=params
             )
             for p in page.get("products", []) or []:
-                if filter_status:
-                    pv_status = (p.get("productStatus") or {}).get(
-                        "destinationStatuses", []
-                    )
-                    # Fall back to a Reports-style filter via productStatus.
-                    # Since list-products doesn't include the aggregated status,
-                    # we conservatively skip this filter here and rely on caller
-                    # using a Reports-driven workflow when filtering.
-                    pass
+                if wanted is not None and _product_key(p) not in wanted:
+                    continue
                 candidates.append(p)
                 if len(candidates) >= max_delete:
                     break
@@ -207,7 +267,7 @@ def register(mcp, client: MerchantClient) -> None:
         path = f"reports/v1/{acct}/reports:search"
         page_count = 0
         while page_count < max_pages:
-            payload = client.request("POST", path, json_body=body)
+            payload = client.request("POST", path, json_body=body, read_only=True)
             results.extend(payload.get("results", []) or [])
             page_count += 1
             token = payload.get("nextPageToken")

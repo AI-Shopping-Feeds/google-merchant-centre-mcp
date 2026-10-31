@@ -51,11 +51,7 @@ def register(mcp, client: MerchantClient) -> None:
     def gmc_update_conversion_source(
         source_id: str, source: dict[str, Any], update_mask: str | None = None
     ) -> dict[str, Any]:
-        before = None
-        try:
-            before = client.request("GET", f"{base}/{source_id}")
-        except Exception:
-            pass
+        before = client.snapshot(f"{base}/{source_id}")
         params = {"updateMask": update_mask} if update_mask else None
         return client.request(
             "PATCH",
@@ -69,11 +65,7 @@ def register(mcp, client: MerchantClient) -> None:
     @mcp.tool()
     def gmc_delete_conversion_source(source_id: str) -> dict[str, Any]:
         """Soft-delete a conversion source (recoverable via undelete)."""
-        before = None
-        try:
-            before = client.request("GET", f"{base}/{source_id}")
-        except Exception:
-            pass
+        before = client.snapshot(f"{base}/{source_id}")
         client.request(
             "DELETE", f"{base}/{source_id}", op="delete_conversion_source", before=before
         )
