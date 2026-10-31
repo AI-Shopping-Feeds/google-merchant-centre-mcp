@@ -7,6 +7,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 DEFAULT_AUDIT_LOG_NAME = "audit.jsonl"
+# "sse" (HTTP+SSE) is deprecated by the MCP spec; prefer "streamable-http".
+TRANSPORTS = ("stdio", "streamable-http", "sse")
 
 
 def _truthy(value: str | None) -> bool:
@@ -102,8 +104,10 @@ def load_config(env_file: Path | None = None) -> Config:
     audit_path.parent.mkdir(parents=True, exist_ok=True)
 
     transport = os.environ.get("GMC_TRANSPORT", "stdio").strip().lower()
-    if transport not in {"stdio", "sse"}:
-        raise RuntimeError(f"GMC_TRANSPORT must be 'stdio' or 'sse', got '{transport}'.")
+    if transport not in TRANSPORTS:
+        raise RuntimeError(
+            f"GMC_TRANSPORT must be one of {', '.join(TRANSPORTS)}, got '{transport}'."
+        )
 
     try:
         page_size = int(os.environ.get("GMC_PAGE_SIZE", "100"))

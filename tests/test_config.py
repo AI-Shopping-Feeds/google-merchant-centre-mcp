@@ -140,3 +140,13 @@ def test_unknown_tool_group_lists_valid_groups(
     with pytest.raises(RuntimeError, match="unknown group\\(s\\): widgets") as exc_info:
         load_config(env_file=empty_env)
     assert "Valid groups: account_config, accounts," in str(exc_info.value)
+
+
+@pytest.mark.parametrize("transport", ["stdio", "streamable-http", "sse", "Streamable-HTTP"])
+def test_supported_transports(
+    tmp_path: Path, empty_env: Path, monkeypatch: pytest.MonkeyPatch, transport: str
+) -> None:
+    sa = tmp_path / "sa.json"
+    sa.write_text("{}")
+    _setup_env(monkeypatch, sa, GMC_TRANSPORT=transport)
+    assert load_config(env_file=empty_env).transport == transport.lower()
