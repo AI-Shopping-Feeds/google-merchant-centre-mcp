@@ -13,11 +13,11 @@ COPY src ./src
 RUN pip install --no-cache-dir -e .
 
 # Defaults; override at runtime with -e
-ENV GMC_TRANSPORT=sse \
+ENV GMC_TRANSPORT=streamable-http \
     GMC_HOST=0.0.0.0 \
     GMC_PORT=8000
 
 EXPOSE 8000
 
 ENTRYPOINT ["gmc-mcp"]
-CMD ["--transport", "sse", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8000"]

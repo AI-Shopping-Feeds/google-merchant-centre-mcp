@@ -310,3 +310,12 @@ async def test_bulk_tool_dry_run_sends_nothing(config: Config) -> None:
     payload = result.structured_content or json.loads(result.content[0].text)
     assert payload["applied_count"] == 1
     assert not route.called
+
+
+def test_version_matches_pyproject_and_server_json() -> None:
+    root = Path(__file__).resolve().parent.parent
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert f'\nversion = "{__version__}"\n' in pyproject
+    manifest = json.loads((root / "server.json").read_text(encoding="utf-8"))
+    assert manifest["version"] == __version__
+    assert {p["version"] for p in manifest["packages"]} == {__version__}

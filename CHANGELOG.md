@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — MCP best practices (0.4.0)
+- **Tool annotations and titles.** Every tool now has a sentence-case `title`
+  and MCP `ToolAnnotations`, kept in `gmc_mcp/tool_catalog.py`. 84 tools are
+  `readOnlyHint` (including read-only POSTs: reports search, issue rendering,
+  Product Studio generation); 22 are `destructiveHint` (deletes, removals,
+  `gmc_unsubscribe`, `gmc_unclaim_homepage`, `gmc_reject_account_service`,
+  `gmc_unregister_gcp`, `gmc_disable_program`, `gmc_accept_tos`,
+  `gmc_bulk_delete_products`, `gmc_rollback`). Before this, clients had to
+  treat every tool as destructive.
+- **Server metadata.** The server reports its version and a title, and sends
+  short `instructions`: where to start, dry-run, `confirm`, the audit log and
+  rollback, and tool groups.
+- **`GMC_TOOL_GROUPS`** registers only the listed tool modules (e.g.
+  `products,issues,reports`); unset means all. An unknown name stops the server
+  at startup with the list of valid groups.
+- **`GMC_READ_ONLY=true`** registers only read-only tools. `gmc_describe_server`,
+  the audit tools and `gmc_set_dry_run` are always registered, and
+  `gmc_describe_server` reports the active groups and read-only mode.
+- **Streamable HTTP transport:** `GMC_TRANSPORT=streamable-http` or
+  `--transport streamable-http`, served at `/mcp`. The Docker image now uses it.
+- **Progress notifications** from `gmc_bulk_update_regional_prices`,
+  `gmc_bulk_set_availability`, `gmc_bulk_delete_products` (one per item) and
+  `gmc_export_all` (one per resource). These tools are now async and run their
+  blocking API calls in a worker thread; results, dry-run and audit logging are
+  unchanged.
+- End-to-end tests through `mcp.Client` (`tests/test_mcp_client.py`).
+
+### Changed
+- `--transport sse` / `GMC_TRANSPORT=sse` still works but logs a deprecation
+  warning, as the MCP spec deprecates HTTP+SSE. Use `streamable-http`.
+- The HTTP transports still bind to `127.0.0.1` by default; binding to another
+  host now logs a warning that the server has no sign-in.
+- The HTTP `User-Agent` reports the package version (was a fixed `0.1.0`).
+- Version 0.4.0.
+
 ### Changed — MCP SDK 2
 - Requires `mcp>=2.3.0,<3` (was `<2`). The server is built on the SDK's
   `MCPServer` (the successor to `mcp.server.fastmcp.FastMCP`, which SDK 2
