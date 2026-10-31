@@ -1,13 +1,11 @@
-<!-- mcp-name: io.github.kiwoongeom/gmc-mcp -->
+<!-- mcp-name: io.github.AI-Shopping-Feeds/google-merchant-centre-mcp -->
 
 # Google Merchant Center MCP (`gmc-mcp`)
 
-[![PyPI](https://img.shields.io/pypi/v/gmc-mcp.svg)](https://pypi.org/project/gmc-mcp/)
-[![Downloads](https://static.pepy.tech/badge/gmc-mcp)](https://pepy.tech/projects/gmc-mcp)
-[![Downloads/month](https://static.pepy.tech/badge/gmc-mcp/month)](https://pepy.tech/projects/gmc-mcp)
-[![GitHub stars](https://img.shields.io/github/stars/kiwoongeom/gmc-mcp?style=social)](https://github.com/kiwoongeom/gmc-mcp/stargazers)
-[![CI](https://github.com/kiwoongeom/gmc-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kiwoongeom/gmc-mcp/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/pypi/pyversions/gmc-mcp.svg)](https://pypi.org/project/gmc-mcp/)
+[![PyPI](https://img.shields.io/pypi/v/google-merchant-centre-mcp.svg)](https://pypi.org/project/google-merchant-centre-mcp/)
+[![GitHub stars](https://img.shields.io/github/stars/AI-Shopping-Feeds/google-merchant-centre-mcp?style=social)](https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp/stargazers)
+[![CI](https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/pypi/pyversions/google-merchant-centre-mcp.svg)](https://pypi.org/project/google-merchant-centre-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
@@ -23,7 +21,7 @@
 > |---|---|---|---|---|---|
 > | Adzviser / Catchr / Windsor.ai / Pipedream | Paid hosted SaaS | varies | proprietary | sign-up | varies |
 > | [archpeng/GMC-mcp-server](https://github.com/archpeng/GMC-mcp-server) | Self-hosted | **Content API v2.1** (deprecated 2026-08) | none declared | git clone | 34 |
-> | **`gmc-mcp` (this package)** | **Self-hosted** | **Merchant API v1** (future-proof) | **MIT** | **`pip install gmc-mcp`** | **163** |
+> | **`google-merchant-centre-mcp` (this package)** | **Self-hosted** | **Merchant API v1** (future-proof) | **MIT** | **`pip install google-merchant-centre-mcp`** | **163** |
 >
 > Pick this if you want: future-proof API, an actual OSS license, PyPI install,
 > a larger toolset, audit log + rollback + dry-run safety, and credentials that
@@ -37,9 +35,9 @@ destructive bulk operations require an explicit `confirm` parameter.
 > **About this fork:** this is [AI Shopping Feeds](https://github.com/AI-Shopping-Feeds)'s
 > fork of [kiwoongeom/gmc-mcp](https://github.com/kiwoongeom/gmc-mcp). It adds
 > full Merchant API v1 coverage and fixes endpoints that didn't exist in the API
-> (see [CHANGELOG.md](CHANGELOG.md)). The PyPI badges above and `pip install gmc-mcp`
-> refer to the upstream release. Install this fork from GitHub as shown in
-> [Install](#install).
+> (see [CHANGELOG.md](CHANGELOG.md)). It's published on PyPI as
+> `google-merchant-centre-mcp`. The upstream package is `gmc-mcp`. The command
+> it installs is still `gmc-mcp`.
 >
 > **Using an AI agent?** Point it at [`skills/gmc-mcp/SKILL.md`](skills/gmc-mcp/SKILL.md).
 > It covers installing the server, connecting it to the agent's MCP client and

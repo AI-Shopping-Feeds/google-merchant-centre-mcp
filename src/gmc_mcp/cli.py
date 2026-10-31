@@ -121,7 +121,7 @@ def auth_init(secrets_path: Path, output_path: Path, port: int) -> None:
     except ImportError as e:  # pragma: no cover
         raise click.ClickException(
             "google-auth-oauthlib is required for auth-init. "
-            "Install it with: pip install gmc-mcp[oauth]"
+            "Install it with: pip install google-auth-oauthlib"
         ) from e
 
     flow = InstalledAppFlow.from_client_secrets_file(str(secrets_path), SCOPES)

@@ -3,13 +3,16 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "gmc-mcp"
-version = "0.2.5"
+name = "google-merchant-centre-mcp"
+version = "0.3.0"
 description = "MCP server for Google Merchant Center on Merchant API v1. MIT-licensed, pip install-able, 163 tools across 23 modules covering every v1 sub-API, with audit log, rollback, and dry-run."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "eric.eom", email = "eric.eom@gmail.com" }]
+authors = [
+    { name = "eric.eom", email = "eric.eom@gmail.com" },
+    { name = "AI Shopping Feeds" },
+]
 keywords = [
     "mcp",
     "model-context-protocol",
@@ -73,11 +76,12 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/kiwoongeom/gmc-mcp"
-Documentation = "https://github.com/kiwoongeom/gmc-mcp#readme"
-Repository = "https://github.com/kiwoongeom/gmc-mcp"
-Issues = "https://github.com/kiwoongeom/gmc-mcp/issues"
-Changelog = "https://github.com/kiwoongeom/gmc-mcp/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp"
+Documentation = "https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp#readme"
+Repository = "https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp"
+Issues = "https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp/issues"
+Changelog = "https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp/blob/main/CHANGELOG.md"
+Upstream = "https://github.com/kiwoongeom/gmc-mcp"
 
 [project.scripts]
 gmc-mcp = "gmc_mcp.cli:main"

@@ -1,4 +1,4 @@
-# Changelog — Google Merchant Center MCP (`gmc-mcp`)
+# Changelog — Google Merchant Center MCP (`google-merchant-centre-mcp`)
 
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed — published as this fork
+- PyPI package renamed from `gmc-mcp` to **`google-merchant-centre-mcp`**, and the MCP
+  Registry name from `io.github.kiwoongeom/gmc-mcp` to
+  **`io.github.AI-Shopping-Feeds/google-merchant-centre-mcp`**. The `gmc-mcp`
+  command and the `gmc_mcp` import package are unchanged.
+- Project URLs, badges and `server.json` now point at
+  https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp. The original
+  author keeps their copyright line and author credit.
+- Version 0.3.0.
 
 Full coverage pass against the Merchant API v1 discovery documents. Tool count
 goes from 126 to 163 (159 module tools across 23 modules + 4 meta tools).
