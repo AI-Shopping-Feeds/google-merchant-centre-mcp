@@ -9,7 +9,7 @@ credentials work.
 | `quickstart.py` | Connect, fetch account info, list 5 products. |
 | `audit_disapproved.py` | Save a CSV of every disapproved product with issue codes. |
 | `bulk_price_update.py` | Apply a price-bump to a list of SKUs (with --dry-run). |
-| `claude_desktop_config_snippet.json` | Drop-in MCP entry for Claude Desktop / Code. |
+| `claude_desktop_config_snippet.json` | Drop-in MCP entry for Claude Desktop, Cursor and other JSON-config clients (uses `uvx`). |
 
 Run any script after creating `.env`:
 
