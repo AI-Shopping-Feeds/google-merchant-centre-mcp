@@ -39,9 +39,31 @@ destructive bulk operations require an explicit `confirm` parameter.
 > `google-merchant-centre-mcp`. The upstream package is `gmc-mcp`. The command
 > it installs is still `gmc-mcp`.
 >
-> **Using an AI agent?** Point it at [`skills/gmc-mcp/SKILL.md`](skills/gmc-mcp/SKILL.md).
-> It covers installing the server, connecting it to the agent's MCP client and
-> using the write tools safely.
+> **Using an AI agent?** See [Let your agent set it up](#let-your-agent-set-it-up).
+
+## Let your agent set it up
+
+Paste this into Claude Code, Codex, Cursor or any agent that can read web pages and edit files:
+
+```text
+Set up the Google Merchant Centre MCP server for me by following https://raw.githubusercontent.com/AI-Shopping-Feeds/google-merchant-centre-mcp/main/skills/gmc-mcp/SKILL.md
+```
+
+The agent:
+- checks whether it's already connected
+- installs the runner if you agree
+- walks you through the credentials
+- adds the server to your client's config without touching your other servers
+- checks it works by calling `gmc_describe_server`
+
+The same file is an [Agent Skill](https://agentskills.io), so your agent can keep it as a guide to using the tools well. For Claude Code, copy the folder into your skills:
+
+```bash
+git clone --depth 1 https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git /tmp/google-merchant-centre-mcp
+cp -r /tmp/google-merchant-centre-mcp/skills/gmc-mcp ~/.claude/skills/
+```
+
+Other agents that support skills load the same `skills/gmc-mcp` folder from their own skills directory.
 
 ## Why this exists
 
