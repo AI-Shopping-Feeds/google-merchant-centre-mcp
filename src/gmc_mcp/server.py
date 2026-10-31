@@ -19,7 +19,7 @@ from .audit import AuditLog
 from .auth import load_auth
 from .client import MerchantAPIError, MerchantClient
 from .config import Config, load_config
-from .tool_catalog import TOOL_SPECS
+from .tool_catalog import ALWAYS_REGISTERED, TOOL_SPECS
 
 logger = get_logger("server")
 
@@ -28,7 +28,8 @@ Google Merchant Center (Merchant API v1): products, inventory, feeds, issues, re
 Start with gmc_describe_server and gmc_health_check; for disapprovals, gmc_disapprovals_overview.
 Writes hit the live account. Rehearse with dry-run (gmc_set_dry_run or GMC_DRY_RUN): logged, not sent.
 Bulk/batch tools, gmc_delete_account and gmc_rollback need confirm (e.g. 'DELETE'); other deletes don't.
-Every write goes to an audit log (gmc_audit_tail); gmc_rollback undoes one that has a before snapshot."""
+Every write goes to an audit log (gmc_audit_tail); gmc_rollback undoes one that has a before snapshot.
+Tools can be limited with GMC_TOOL_GROUPS (module names) or GMC_READ_ONLY=true."""
 
 # Errors whose message helps the agent fix the call (bad arguments, a refusal
 # such as a missing confirm, Merchant API errors, permissions or config problems).
@@ -72,8 +73,13 @@ class GmcMCPServer(MCPServer):
     """MCPServer whose tools report expected errors to the client.
 
     Each tool gets its title and annotations from `tool_catalog.TOOL_SPECS`
-    unless the decorator passes them.
+    unless the decorator passes them. With `read_only=True`, tools that are not
+    annotated read-only are skipped (the meta tools are always registered).
     """
+
+    def __init__(self, *args: Any, read_only: bool = False, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.read_only = read_only
 
     def tool(  # type: ignore[override]
         self,
@@ -88,6 +94,9 @@ class GmcMCPServer(MCPServer):
             spec = TOOL_SPECS.get(tool_name)
             tool_title = title or (spec.title if spec else None)
             tool_annotations = annotations or (spec.annotations if spec else None)
+            is_read_only = bool(tool_annotations and tool_annotations.read_only_hint)
+            if self.read_only and not is_read_only and tool_name not in ALWAYS_REGISTERED:
+                return fn
             register = super(GmcMCPServer, self).tool(
                 name=name,
                 title=tool_title,
@@ -106,6 +115,7 @@ def build_server(config: Config | None = None, env_file: Path | None = None) -> 
     configure_default()
     if config is None:
         config = load_config(env_file=env_file)
+    groups = tools.resolve_tool_groups(config.tool_groups)  # fail fast on unknown groups
 
     auth = load_auth(
         service_account_key=config.service_account_key,
@@ -127,6 +137,7 @@ def build_server(config: Config | None = None, env_file: Path | None = None) -> 
         title="Google Merchant Center",
         version=__version__,
         instructions=INSTRUCTIONS,
+        read_only=config.read_only,
     )
 
     @mcp.tool()
@@ -143,6 +154,8 @@ def build_server(config: Config | None = None, env_file: Path | None = None) -> 
             "timeout": config.timeout,
             "transport": config.transport,
             "version": __version__,
+            "tool_groups": config.tool_groups or "all",
+            "read_only": config.read_only,
         }
 
     @mcp.tool()
@@ -171,28 +184,13 @@ def build_server(config: Config | None = None, env_file: Path | None = None) -> 
         logger.info("dry_run=%s (set via tool)", enabled)
         return {"dry_run": enabled}
 
-    tools.products.register(mcp, client)
-    tools.inventory.register(mcp, client)
-    tools.issues.register(mcp, client)
-    tools.reports.register(mcp, client)
-    tools.promotions.register(mcp, client)
-    tools.accounts.register(mcp, client)
-    tools.notifications.register(mcp, client)
-    tools.feeds.register(mcp, client)
-    tools.return_policies.register(mcp, client)
-    tools.homepage.register(mcp, client)
-    tools.account_config.register(mcp, client)
-    tools.quotas.register(mcp, client)
-    tools.reviews.register(mcp, client)
-    tools.conversions.register(mcp, client)
-    tools.omnichannel.register(mcp, client)
-    tools.lfp.register(mcp, client)
-    tools.mca.register(mcp, client)
-    tools.bulk.register(mcp, client)
-    tools.diagnostics.register(mcp, client)
-    tools.regions.register(mcp, client)
-    tools.issue_resolution.register(mcp, client)
-    tools.order_tracking.register(mcp, client)
-    tools.product_studio.register(mcp, client)
+    for group in groups:
+        getattr(tools, group).register(mcp, client)
 
+    logger.info(
+        "registered %d tools (groups=%s read_only=%s)",
+        len(mcp._tool_manager.list_tools()),
+        ",".join(config.tool_groups) or "all",
+        config.read_only,
+    )
     return mcp

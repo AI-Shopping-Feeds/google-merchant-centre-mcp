@@ -13,6 +13,18 @@ def _truthy(value: str | None) -> bool:
     return (value or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def parse_tool_groups(raw: str | None) -> list[str]:
+    """Split a comma-separated GMC_TOOL_GROUPS value and check every name.
+
+    Names are case-insensitive and may use '-' for '_'. Empty means all groups.
+    """
+    from .tools import resolve_tool_groups  # local: tools imports this module
+
+    names = [p.strip().lower().replace("-", "_") for p in (raw or "").split(",")]
+    names = [n for n in names if n]
+    return resolve_tool_groups(names) if names else []
+
+
 @dataclass
 class Config:
     account_id: str
@@ -27,6 +39,10 @@ class Config:
     transport: str = "stdio"
     host: str = "127.0.0.1"
     port: int = 8000
+    # Tool modules to register; empty means all (see gmc_mcp.tools.TOOL_GROUPS).
+    tool_groups: list[str] = field(default_factory=list)
+    # Register only tools annotated read-only (plus the meta tools).
+    read_only: bool = False
     extras: dict[str, str] = field(default_factory=dict)
 
     @property
@@ -115,4 +131,6 @@ def load_config(env_file: Path | None = None) -> Config:
         transport=transport,
         host=os.environ.get("GMC_HOST", "127.0.0.1"),
         port=port,
+        tool_groups=parse_tool_groups(os.environ.get("GMC_TOOL_GROUPS")),
+        read_only=_truthy(os.environ.get("GMC_READ_ONLY")),
     )
