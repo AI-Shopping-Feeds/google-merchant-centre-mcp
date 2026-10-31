@@ -63,7 +63,7 @@ never print secrets back to them.
 6. **Verify.** Reload the client, then call `gmc_describe_server` and
    `gmc_health_check`. Both should succeed and show the right account.
 
-## 2. Tools (163)
+## 2. Tools (166)
 
 All tools start with `gmc_`. The main groups:
 
@@ -74,7 +74,9 @@ All tools start with `gmc_`. The main groups:
   list/delete for both, `bulk_update_regional_prices`, `bulk_set_availability`.
 - **Issues:** `list_account_issues`, `get_product_status`,
   `summarize_product_issues`, `render_account_issues`, `render_product_issues`,
-  `trigger_issue_action`, `list_aggregate_product_statuses`.
+  `list_aggregate_product_statuses`.
+- **Review requests:** `list_review_options`, `list_disapproved_review_options`,
+  `request_review` (`trigger_issue_action` is the raw version).
 - **Reports:** `query_report` (Merchant Reports query language) plus shortcuts
   such as `product_performance`, `price_competitiveness`, `best_sellers`,
   `zero_click_products`, `price_insights`, `demoted_products`.
@@ -122,6 +124,21 @@ versions, which Google may change.
 
 **Disapproval audit:** `gmc_summarize_product_issues` for counts by issue,
 then `gmc_render_product_issues` on the worst products for fix instructions.
+
+**Request a review of a disapproval:**
+1. `gmc_list_disapproved_review_options` (or `gmc_list_review_options` with a
+   `product_id`, or with none for account issues).
+2. For an action with `kind: "request_in_api"` and `available: true`, show the
+   user the issue, the flow choices (e.g. "I fixed the issue" or "I
+   disagree"), any `warning`, and the questions. Ask which flow applies and
+   get their answers. Don't answer for them, and don't claim a fix happened
+   unless they confirm it did.
+3. `gmc_request_review(action_context, flow_id, answers)` with
+   `answers` as `{field_id: true/false | "text" | {"choice": "<option_id>"}}`.
+4. If `available` is false, report `unavailable_reasons` and don't retry. For
+   `kind: "external"`, give the user the `url`.
+
+Reviews can often be requested only once per issue, so fix the problem first.
 
 **Change a price:** `gmc_get_product` to read the current product input and its
 data source, then `gmc_patch_product` with

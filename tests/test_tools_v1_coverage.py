@@ -764,7 +764,7 @@ def test_all_modules_register_unique_gmc_tools(client: MerchantClient) -> None:
         getattr(tools, name).register(mcp, client)
     names = list(mcp._tool_manager._tools)
     assert all(n.startswith("gmc_") for n in names)
-    assert len(names) == 159  # FastMCP drops duplicates, so this also proves uniqueness
+    assert len(names) == 162  # FastMCP drops duplicates, so this also proves uniqueness
 
 
 def test_build_server_registers_every_tool(config, monkeypatch) -> None:
@@ -775,6 +775,6 @@ def test_build_server_registers_every_tool(config, monkeypatch) -> None:
     monkeypatch.setattr(server, "load_auth", lambda **_: FakeAuth())
     mcp = server.build_server(config)
     names = set(mcp._tool_manager._tools)
-    assert len(names) == 163  # 159 module tools + 4 meta tools
+    assert len(names) == 166  # 162 module tools + 4 meta tools
     assert {"gmc_render_account_issues", "gmc_create_order_tracking_signal",
             "gmc_upscale_product_image", "gmc_describe_server"} <= names

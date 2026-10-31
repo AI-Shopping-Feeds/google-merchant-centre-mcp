@@ -18,9 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Version 0.3.0.
 
 Full coverage pass against the Merchant API v1 discovery documents. Tool count
-goes from 126 to 163 (159 module tools across 23 modules + 4 meta tools).
+goes from 126 to 166 (162 module tools across 23 modules + 4 meta tools).
 
 ### Added
+- **Disapproval review requests**: `gmc_list_review_options`, `gmc_request_review`
+  and `gmc_list_disapproved_review_options`. They wrap Issue Resolution
+  `render*issues` (with `BUILT_IN_USER_INPUT_ACTIONS`) and `triggeraction`,
+  returning only review/appeal actions with their availability, flows and
+  questions, and building the `inputValues` payload from plain answers.
 - **products**: `gmc_patch_product` (`productInputs.patch` with `updateMask`).
 - **inventory**: `gmc_delete_local_inventory`, `gmc_delete_regional_inventory`.
 - **accounts**: `gmc_list_accounts`, `gmc_list_subaccounts`, `gmc_update_account`,

@@ -10,7 +10,7 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
 > **MCP server for Google Merchant Center, built on Merchant API v1.**
-> 163 tools, MIT-licensed, `pip install`-able. Drive your Google Shopping
+> 166 tools, MIT-licensed, `pip install`-able. Drive your Google Shopping
 > feed, products, inventory, Reports, promotions, returns, and account
 > configuration in natural language from Claude Desktop, Claude Code, or any
 > MCP-compatible client.
@@ -21,7 +21,7 @@
 > |---|---|---|---|---|---|
 > | Adzviser / Catchr / Windsor.ai / Pipedream | Paid hosted SaaS | varies | proprietary | sign-up | varies |
 > | [archpeng/GMC-mcp-server](https://github.com/archpeng/GMC-mcp-server) | Self-hosted | **Content API v2.1** (deprecated 2026-08) | none declared | git clone | 34 |
-> | **`google-merchant-centre-mcp` (this package)** | **Self-hosted** | **Merchant API v1** (future-proof) | **MIT** | **`pip install google-merchant-centre-mcp`** | **163** |
+> | **`google-merchant-centre-mcp` (this package)** | **Self-hosted** | **Merchant API v1** (future-proof) | **MIT** | **`pip install google-merchant-centre-mcp`** | **166** |
 >
 > Pick this if you want: future-proof API, an actual OSS license, PyPI install,
 > a larger toolset, audit log + rollback + dry-run safety, and credentials that
@@ -60,9 +60,9 @@ There are existing MCP services for GMC, but they fit different niches:
 
 `gmc-mcp` was built to fill the gap: a self-hosted package on the **new
 Merchant API v1**, MIT-licensed, on **PyPI**, with audit/rollback/dry-run
-safety and 163 tools across 23 modules.
+safety and 166 tools across 23 modules.
 
-The package gives Claude (or any MCP client) **163 tools** that map directly
+The package gives Claude (or any MCP client) **166 tools** that map directly
 onto the Merchant API v1 surface, so you can do things like:
 
 - *"Show me every disapproved product, grouped by issue code."*
@@ -73,7 +73,7 @@ onto the Merchant API v1 surface, so you can do things like:
 
 ## What's exposed
 
-**163 tools: 159 across 23 modules + 4 meta tools.**
+**166 tools: 162 across 23 modules + 4 meta tools.**
 
 Every Merchant API v1 resource method is covered (accounts, conversions,
 datasources, inventories, issueresolution, lfp, notifications, ordertracking,
@@ -91,7 +91,7 @@ version tag:
 | **products** | `gmc_list_products`, `gmc_get_product`, `gmc_insert_product`, `gmc_update_product`, `gmc_patch_product`, `gmc_delete_product`, `gmc_bulk_delete_products`, `gmc_list_disapproved_products` |
 | **inventory** | `gmc_update_regional_inventory`, `gmc_update_local_inventory`, `gmc_list_regional_inventories`, `gmc_list_local_inventories`, `gmc_delete_local_inventory`, `gmc_delete_regional_inventory` |
 | **issues** | `gmc_list_account_issues`, `gmc_get_product_status`, `gmc_summarize_product_issues` |
-| **issue_resolution** | `gmc_render_account_issues`, `gmc_render_product_issues`, `gmc_trigger_issue_action`, `gmc_list_aggregate_product_statuses` |
+| **issue_resolution** | `gmc_render_account_issues`, `gmc_render_product_issues`, `gmc_trigger_issue_action`, `gmc_list_review_options`, `gmc_request_review`, `gmc_list_disapproved_review_options`, `gmc_list_aggregate_product_statuses` |
 | **reports** | `gmc_query_report`, `gmc_product_performance`, `gmc_price_competitiveness`, `gmc_best_sellers`, `gmc_zero_click_products`, `gmc_revenue_by_brand`, `gmc_category_performance`, `gmc_competitive_visibility_top_merchants`, `gmc_price_insights`, `gmc_demoted_products` |
 | **promotions** | `gmc_list_promotions`, `gmc_get_promotion`, `gmc_insert_promotion` |
 | **accounts** | `gmc_get_account`, `gmc_list_accounts`, `gmc_list_subaccounts`, `gmc_update_account`, `gmc_delete_account`, `gmc_create_and_configure_account`, `gmc_create_test_account`, `gmc_get_business_info`, `gmc_update_business_info`, `gmc_list_users`, `gmc_add_user`, `gmc_remove_user`, `gmc_get_user`, `gmc_update_user`, `gmc_verify_self`, `gmc_get_shipping_settings`, `gmc_update_shipping_settings`, `gmc_list_programs`, `gmc_get_program`, `gmc_enable_program`, `gmc_disable_program`, `gmc_get_developer_registration`, `gmc_register_gcp`, `gmc_unregister_gcp`, `gmc_get_account_for_gcp_registration` |
@@ -281,6 +281,34 @@ GMC_DRY_RUN=true gmc-mcp run
 Reads always go through; only writes are skipped. POST endpoints that don't
 change anything (Reports `search`, Issue Resolution `render*`, Product Studio
 generation) are treated as reads, so they also run in dry-run mode.
+
+## Requesting a review of a disapproval
+
+The Merchant API has no single "request review" endpoint. Google returns review
+and appeal actions with each rendered issue, and you submit them with
+`triggeraction`. These tools wrap that flow:
+
+1. `gmc_list_disapproved_review_options` checks disapproved products in bulk, or
+   `gmc_list_review_options(product_id=...)` checks one product (leave out
+   `product_id` for account issues). Each issue shows its review actions,
+   whether they're available now, why not if they aren't (e.g. a review is
+   already pending), the flows to pick from ("I fixed it", "I disagree") and the
+   questions to answer.
+2. `gmc_request_review(action_context, flow_id, answers)` submits the request.
+   It's audited and respects dry-run.
+
+```
+> Which disapproved products can I request a review for?
+[gmc_list_disapproved_review_options() → 3 products, 2 requestable now]
+
+> I've fixed the price mismatch on SKU1, request a review.
+[gmc_request_review(action_context="...", flow_id="...", answers={"...": true})]
+```
+
+Some issues allow only one review, and a failed review can block new requests
+for several days, so only request a review once the issue is fixed or the
+business disagrees with it. Actions marked `external` have to be done in
+Merchant Center or the Help Center via the returned `url`.
 
 ## Reports query examples
 

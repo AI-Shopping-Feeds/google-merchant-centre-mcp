@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.AI-Shopping-Feeds/google-merchant-centre-mcp",
-  "description": "MIT-licensed pip-installable MCP for Google Merchant Center on Merchant API v1 (163 tools).",
+  "description": "MIT-licensed pip-installable MCP for Google Merchant Center on Merchant API v1 (166 tools).",
   "repository": {
     "url": "https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp",
     "source": "github"
