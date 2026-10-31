@@ -1,45 +1,24 @@
 <!-- mcp-name: io.github.AI-Shopping-Feeds/google-merchant-centre-mcp -->
 
-# Google Merchant Center MCP (`gmc-mcp`)
+# Google Merchant Centre MCP Server (read + write)
 
-[![PyPI](https://img.shields.io/pypi/v/google-merchant-centre-mcp.svg)](https://pypi.org/project/google-merchant-centre-mcp/)
-[![GitHub stars](https://img.shields.io/github/stars/AI-Shopping-Feeds/google-merchant-centre-mcp?style=social)](https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp/stargazers)
-[![CI](https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/pypi/pyversions/google-merchant-centre-mcp.svg)](https://pypi.org/project/google-merchant-centre-mcp/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/downloads/) [![Fork of kiwoongeom/gmc-mcp](https://img.shields.io/badge/fork%20of-kiwoongeom%2Fgmc--mcp-lightgrey.svg)](https://github.com/kiwoongeom/gmc-mcp)
 
-> **MCP server for Google Merchant Center, built on Merchant API v1.**
-> 166 tools, MIT-licensed, `pip install`-able. Drive your Google Shopping
-> feed, products, inventory, Reports, promotions, returns, and account
-> configuration in natural language from Claude Desktop, Claude Code, or any
-> MCP-compatible client.
->
-> ### Where this fits in the GMC + MCP landscape
->
-> | Option | Type | API | License | Install | Tools |
-> |---|---|---|---|---|---|
-> | Adzviser / Catchr / Windsor.ai / Pipedream | Paid hosted SaaS | varies | proprietary | sign-up | varies |
-> | [archpeng/GMC-mcp-server](https://github.com/archpeng/GMC-mcp-server) | Self-hosted | **Content API v2.1** (deprecated 2026-08) | none declared | git clone | 34 |
-> | **`google-merchant-centre-mcp` (this package)** | **Self-hosted** | **Merchant API v1** (future-proof) | **MIT** | **`pip install google-merchant-centre-mcp`** | **166** |
->
-> Pick this if you want: future-proof API, an actual OSS license, PyPI install,
-> a larger toolset, audit log + rollback + dry-run safety, and credentials that
-> never leave your machine.
+An [MCP](https://modelcontextprotocol.io) server for
+[Google Merchant Center](https://merchants.google.com), built on
+[Merchant API v1](https://developers.google.com/merchant/api). Use it from Claude,
+ChatGPT, Cursor, Codex or any MCP client to manage products, prices, inventory,
+feeds, promotions, shipping and returns, find disapprovals and request reviews,
+and report on Shopping performance.
 
-Built on **Merchant API v1** (replaces Content API for Shopping; v1beta was
-discontinued 2026-02-28). Safe by default: every write is recorded to an
-append-only audit log with `before` snapshots, dry-run is one toggle away, and
-destructive bulk operations require an explicit `confirm` parameter.
+This is a fork of [kiwoongeom/gmc-mcp](https://github.com/kiwoongeom/gmc-mcp), maintained by [AI Shopping Feeds](https://github.com/AI-Shopping-Feeds). Upstream covers most of Merchant API v1 with an audit log, rollback and dry-run. This fork adds:
 
-> **About this fork:** this is [AI Shopping Feeds](https://github.com/AI-Shopping-Feeds)'s
-> fork of [kiwoongeom/gmc-mcp](https://github.com/kiwoongeom/gmc-mcp). It adds
-> full Merchant API v1 coverage and fixes endpoints that didn't exist in the API
-> (see [CHANGELOG.md](CHANGELOG.md)). It's published on PyPI as
-> `google-merchant-centre-mcp`. The upstream package is `gmc-mcp`. The command
-> it installs is still `gmc-mcp`.
->
-> **Using an AI agent?** See [Let your agent set it up](#let-your-agent-set-it-up).
+- **every Merchant API v1 method** (128), including accounts, issue resolution, order tracking and Product Studio
+- a one-call **disapprovals overview** with reasons, and guided **review requests**
+- **fixes** for tools that called endpoints that don't exist, and a bulk delete that ignored its filter
+- read-only Reports calls that work in **dry-run** mode
+
+Part of the AI Shopping Feeds MCP family: [Google Ads](https://github.com/AI-Shopping-Feeds/google-ads-mcp) · **Google Merchant Centre** · [Google Analytics](https://github.com/AI-Shopping-Feeds/google-analytics-mcp) · [YouTube Studio](https://github.com/AI-Shopping-Feeds/youtube-studio-mcp).
 
 ## Let your agent set it up
 
@@ -49,12 +28,10 @@ Paste this into Claude Code, Codex, Cursor or any agent that can read web pages 
 Set up the Google Merchant Centre MCP server for me by following https://raw.githubusercontent.com/AI-Shopping-Feeds/google-merchant-centre-mcp/main/skills/gmc-mcp/SKILL.md
 ```
 
-The agent:
-- checks whether it's already connected
-- installs the runner if you agree
-- walks you through the credentials
-- adds the server to your client's config without touching your other servers
-- checks it works by calling `gmc_describe_server`
+The agent checks whether it's already connected, installs the runner if you
+agree, walks you through the service account and Merchant Center access, adds the server to your
+client's config without touching your other servers, and checks it works by
+calling `gmc_describe_server`.
 
 The same file is an [Agent Skill](https://agentskills.io), so your agent can keep it as a guide to using the tools well. For Claude Code, copy the folder into your skills:
 
@@ -65,155 +42,98 @@ cp -r /tmp/google-merchant-centre-mcp/skills/gmc-mcp ~/.claude/skills/
 
 Other agents that support skills load the same `skills/gmc-mcp` folder from their own skills directory.
 
-## Why this exists
+## What it can do
 
-Google Merchant Center (GMC) powers Google Shopping listings, Free Listings,
-Shopping Ads, Buy on Google checkout, YouTube Shopping, and more. Managing a
-feed of thousands of products through the GMC web UI is tedious, and writing
-one-off Python scripts against the Merchant API REST endpoints is slow.
+166 tools, all prefixed `gmc_`. The full list is in [docs/tools.md](docs/tools.md).
 
-There are existing MCP services for GMC, but they fit different niches:
+### Read
 
-- **Paid hosted SaaS** (Adzviser, Catchr, Windsor.ai, Pipedream) — your data
-  is proxied through their servers; monthly subscription.
-- **`archpeng/GMC-mcp-server`** — earliest self-hosted Python option (Feb 2026),
-  but built on the deprecated **Content API v2.1** which Google retires in
-  **August 2026**, has no license declared, and isn't on PyPI.
-
-`gmc-mcp` was built to fill the gap: a self-hosted package on the **new
-Merchant API v1**, MIT-licensed, on **PyPI**, with audit/rollback/dry-run
-safety and 166 tools across 23 modules.
-
-The package gives Claude (or any MCP client) **166 tools** that map directly
-onto the Merchant API v1 surface, so you can do things like:
-
-- *"Show me every disapproved product, grouped by issue code."*
-- *"Bump US prices 5% on these 40 SKUs."*
-- *"Which products had impressions but zero clicks last week?"*
-- *"Roll back audit ID 8fc8dc42… — that update broke something."*
-- *"Compare this Shopify CSV against my GMC feed; what's missing?"*
-
-## What's exposed
-
-**166 tools: 162 across 23 modules + 4 meta tools.**
-
-Every Merchant API v1 resource method is covered (accounts, conversions,
-datasources, inventories, issueresolution, lfp, notifications, ordertracking,
-products, promotions, quota, reports, reviews). A few tools deliberately call a
-pre-GA version because v1 has no equivalent; their descriptions start with the
-version tag:
-
-- `[v1beta]` `gmc_update_return_policy` (v1 has no `onlineReturnPolicies.patch`)
-  and the four `*_merchant_review*` tools (merchant reviews are v1beta-only).
-- `[ALPHA v1alpha]` the four **product_studio** tools (Product Studio has no
-  v1/v1beta API; may need allowlisting).
-
-| Module | Tools |
+| Area | Tools |
 |---|---|
-| **products** | `gmc_list_products`, `gmc_get_product`, `gmc_insert_product`, `gmc_update_product`, `gmc_patch_product`, `gmc_delete_product`, `gmc_bulk_delete_products`, `gmc_list_disapproved_products` |
-| **inventory** | `gmc_update_regional_inventory`, `gmc_update_local_inventory`, `gmc_list_regional_inventories`, `gmc_list_local_inventories`, `gmc_delete_local_inventory`, `gmc_delete_regional_inventory` |
-| **issues** | `gmc_list_account_issues`, `gmc_get_product_status`, `gmc_summarize_product_issues` |
-| **issue_resolution** | `gmc_render_account_issues`, `gmc_render_product_issues`, `gmc_trigger_issue_action`, `gmc_list_review_options`, `gmc_request_review`, `gmc_disapprovals_overview`, `gmc_list_aggregate_product_statuses` |
-| **reports** | `gmc_query_report`, `gmc_product_performance`, `gmc_price_competitiveness`, `gmc_best_sellers`, `gmc_zero_click_products`, `gmc_revenue_by_brand`, `gmc_category_performance`, `gmc_competitive_visibility_top_merchants`, `gmc_price_insights`, `gmc_demoted_products` |
-| **promotions** | `gmc_list_promotions`, `gmc_get_promotion`, `gmc_insert_promotion` |
-| **accounts** | `gmc_get_account`, `gmc_list_accounts`, `gmc_list_subaccounts`, `gmc_update_account`, `gmc_delete_account`, `gmc_create_and_configure_account`, `gmc_create_test_account`, `gmc_get_business_info`, `gmc_update_business_info`, `gmc_list_users`, `gmc_add_user`, `gmc_remove_user`, `gmc_get_user`, `gmc_update_user`, `gmc_verify_self`, `gmc_get_shipping_settings`, `gmc_update_shipping_settings`, `gmc_list_programs`, `gmc_get_program`, `gmc_enable_program`, `gmc_disable_program`, `gmc_get_developer_registration`, `gmc_register_gcp`, `gmc_unregister_gcp`, `gmc_get_account_for_gcp_registration` |
-| **regions** | `gmc_list_regions`, `gmc_get_region`, `gmc_create_region`, `gmc_update_region`, `gmc_delete_region`, `gmc_batch_create_regions`, `gmc_batch_update_regions`, `gmc_batch_delete_regions` |
-| **notifications** | `gmc_list_subscriptions`, `gmc_subscribe`, `gmc_unsubscribe`, `gmc_get_subscription`, `gmc_update_subscription` |
-| **feeds** | `gmc_list_datasources`, `gmc_get_datasource`, `gmc_create_supplemental_feed`, `gmc_create_primary_feed`, `gmc_create_datasource`, `gmc_update_datasource`, `gmc_get_datasource_file_upload`, `gmc_delete_datasource`, `gmc_fetch_datasource` |
-| **return_policies** | `gmc_list_return_policies`, `gmc_get_return_policy`, `gmc_create_return_policy`, `gmc_update_return_policy`, `gmc_delete_return_policy` |
-| **homepage** | `gmc_get_homepage`, `gmc_update_homepage`, `gmc_claim_homepage`, `gmc_unclaim_homepage` |
-| **account_config** | `gmc_get_business_identity`, `gmc_update_business_identity`, `gmc_get_checkout_settings`, `gmc_create_checkout_settings`, `gmc_update_checkout_settings`, `gmc_delete_checkout_settings`, `gmc_get_automatic_improvements`, `gmc_update_automatic_improvements`, `gmc_get_autofeed_settings`, `gmc_update_autofeed_settings`, `gmc_get_email_preferences`, `gmc_update_email_preferences`, `gmc_get_latest_tos`, `gmc_get_tos`, `gmc_get_tos_agreement_state`, `gmc_retrieve_tos_agreement_for_application`, `gmc_accept_tos` |
-| **quotas** | `gmc_list_quotas`, `gmc_list_account_limits`, `gmc_get_account_limit` |
-| **reviews** | `gmc_list_merchant_reviews`, `gmc_get_merchant_review`, `gmc_insert_merchant_review`, `gmc_delete_merchant_review`, `gmc_list_product_reviews`, `gmc_get_product_review`, `gmc_insert_product_review`, `gmc_delete_product_review` |
-| **conversions** | `gmc_list_conversion_sources`, `gmc_get_conversion_source`, `gmc_create_conversion_source`, `gmc_update_conversion_source`, `gmc_delete_conversion_source`, `gmc_undelete_conversion_source` |
-| **omnichannel** | `gmc_list_omnichannel_settings`, `gmc_get_omnichannel_settings`, `gmc_create_omnichannel_settings`, `gmc_update_omnichannel_settings`, `gmc_request_inventory_verification`, `gmc_find_lfp_providers`, `gmc_link_lfp_provider`, `gmc_link_gbp_account`, `gmc_list_gbp_accounts` |
-| **lfp** | `gmc_lfp_list_stores`, `gmc_lfp_get_store`, `gmc_lfp_insert_store`, `gmc_lfp_delete_store`, `gmc_lfp_insert_inventory`, `gmc_lfp_insert_sale`, `gmc_lfp_get_merchant_state` |
-| **mca** | `gmc_list_relationships`, `gmc_get_relationship`, `gmc_update_relationship`, `gmc_list_account_services`, `gmc_get_account_service`, `gmc_propose_account_service`, `gmc_approve_account_service`, `gmc_reject_account_service` |
-| **order_tracking** | `gmc_create_order_tracking_signal` |
-| **product_studio** | `gmc_generate_product_text_suggestions`, `gmc_generate_product_image_background`, `gmc_remove_product_image_background`, `gmc_upscale_product_image` |
-| **bulk** | `gmc_bulk_update_regional_prices`, `gmc_bulk_set_availability` |
-| **diagnostics** | `gmc_health_check`, `gmc_rollback`, `gmc_export_all`, `gmc_diff_with_shopify` |
-| **meta** | `gmc_describe_server`, `gmc_audit_lookup`, `gmc_audit_tail`, `gmc_set_dry_run` |
+| Products | `list_products`, `get_product`, `list_disapproved_products`, `get_product_status` |
+| Disapprovals | `disapprovals_overview` (reasons, top issues, review options), `list_review_options`, `summarize_product_issues`, `render_product_issues`, `render_account_issues` |
+| Reports | `query_report` plus `product_performance`, `best_sellers`, `price_competitiveness`, `price_insights`, `zero_click_products`, `demoted_products` and more |
+| Feeds and inventory | `list_datasources`, `get_datasource`, `list_regional_inventories`, `list_local_inventories` |
+| Account | `get_account`, users, programs, shipping, business info, homepage, terms of service, regions, return policies, quotas |
+| Server | `describe_server`, `health_check`, `audit_tail`, `audit_lookup`, `export_all`, `diff_with_shopify` |
 
-CLI also exposes: `gmc-mcp run`, `auth-init`, `register-gcp`, `webhook`, `describe`, `version`.
+### Write
 
-## Install
+| Area | Tools |
+|---|---|
+| Products | `insert_product`, `update_product`, `patch_product`, `delete_product`, `bulk_delete_products` |
+| Prices and stock | `update_regional_inventory`, `update_local_inventory`, `bulk_update_regional_prices`, `bulk_set_availability` |
+| Reviews of disapprovals | `request_review`, `trigger_issue_action` |
+| Feeds | `create_primary_feed`, `create_supplemental_feed`, `create_datasource`, `update_datasource`, `fetch_datasource`, `delete_datasource` |
+| Promotions and reviews | `insert_promotion`, merchant and product review tools |
+| Account | shipping, business info and identity, users, programs, regions, return policies, checkout, conversion sources, omnichannel, local feeds partnership, linked accounts |
+| Undo | `rollback`, using the audit log's before-snapshots |
 
-Run this fork straight from GitHub with [uv](https://docs.astral.sh/uv/):
+### Safety
 
-```bash
+- Every write is recorded in an append-only audit log with a before-snapshot, and `gmc_rollback` can undo it.
+- Dry-run (`GMC_DRY_RUN=true` or `gmc_set_dry_run`) logs writes without sending them. Reads and reports still work.
+- Destructive bulk and account operations need an explicit `confirm` value, such as `DELETE`.
+- Details: [docs/safety-and-disapprovals.md](docs/safety-and-disapprovals.md).
+
+## Supported clients
+
+| Client | Works? | How |
+|---|---|---|
+| Claude Code | ✅ | Local server, `claude mcp add` (below) |
+| Claude Desktop | ✅ | Local server, `claude_desktop_config.json` |
+| Cursor | ✅ | Local server, `~/.cursor/mcp.json` |
+| VS Code (Copilot) | ✅ | Local server, `.vscode/mcp.json` (uses `servers` instead of `mcpServers`) |
+| Codex | ✅ | Local server, `~/.codex/config.toml` |
+| Gemini CLI | ✅ | Local server, `~/.gemini/settings.json` |
+| Windsurf and other local clients | ✅ | Local server, same JSON entry |
+| Claude.ai and ChatGPT | ❌ not yet | These need a remote server with sign-in. This server's HTTP mode (`--transport sse`) has no sign-in, so don't expose it publicly. Use a local client. |
+
+## Setup
+
+### 1. Install uv
+
+The server runs with `uvx` from [uv](https://docs.astral.sh/uv/getting-started/installation/)
+(`brew install uv` on macOS) and needs Python 3.10 or later. It installs straight
+from this repository:
+
+```shell
 uvx --from git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git gmc-mcp run
 ```
 
-or install it:
+The command it installs is `gmc-mcp`. It isn't on PyPI under this fork's name yet (the upstream `gmc-mcp` package doesn't have these changes). Pin a release by adding `@vX.Y.Z` to the URL.
+
+### 2. Get credentials
+
+1. **Google Cloud:** enable the **Merchant API**, create a service account and
+   download its JSON key.
+2. **Merchant Center:** in Settings → Account access → People, add the service
+   account's email with **Admin** access. Note your Merchant Center ID (top right).
+3. **Register the Cloud project once** (needed before any Merchant API v1 call):
+
+   ```shell
+   GMC_ACCOUNT_ID=1234567890 GMC_SERVICE_ACCOUNT_KEY=/abs/path/key.json \
+     uvx --from git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git \
+     gmc-mcp register-gcp --developer-email you@example.com
+   ```
+
+To act as a person instead of a service account, use OAuth: see
+[docs/advanced.md](docs/advanced.md#oauth-instead-of-a-service-account).
+
+### 3. Add it to your client
+
+Replace the placeholders. Keep your other servers in each file.
+
+**Claude Code**
 
 ```bash
-pip install "git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git"
-```
-
-Pin a release by adding `@vX.Y.Z` to the URL.
-
-For development:
-
-```bash
-git clone https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp
-cd google-merchant-centre-mcp
-pip install -e ".[dev,test]"
-pre-commit install
-```
-
-## Quick start
-
-### 1. Enable the Merchant API and create a service account
-
-1. [console.cloud.google.com](https://console.cloud.google.com) → create / pick a project.
-2. **APIs & Services → Library** → enable **Merchant API**.
-3. **IAM & Admin → Service Accounts → Create service account** named `gmc-mcp`.
-4. Open the new service account → **Keys → Add key → Create new key → JSON**. Save it somewhere safe.
-
-### 2. Add the service account to your Merchant Center
-
-1. [merchants.google.com](https://merchants.google.com) → top-right gear → **Account access → People**.
-2. **Add user** → enter the `gmc-mcp@PROJECT.iam.gserviceaccount.com` email → grant **Admin**.
-3. Note the 10-digit Merchant Center ID in the top-right.
-
-### 3. Configure
-
-```bash
-cp .env.example .env
-# edit:
-#   GMC_ACCOUNT_ID=1234567890
-#   GMC_SERVICE_ACCOUNT_KEY=/abs/path/to/service-account.json
-```
-
-### 4. One-time GCP registration
-
-Required before any v1 Merchant API call works for a new project.
-
-```bash
-gmc-mcp register-gcp --developer-email you@example.com
-```
-
-### 5. Smoke-test
-
-```bash
-gmc-mcp describe              # prints the resolved config
-python examples/quickstart.py  # makes one read against the Merchant API
-```
-
-### 6. Wire into your MCP client
-
-**Claude Code:**
-
-```bash
-claude mcp add gmc --scope user \
-  -e GMC_ACCOUNT_ID=1234567890 \
-  -e GMC_SERVICE_ACCOUNT_KEY=/abs/path/to/service-account.json \
+claude mcp add --scope user gmc \
+  --env GMC_ACCOUNT_ID=1234567890 \
+  --env GMC_SERVICE_ACCOUNT_KEY=/abs/path/service-account.json \
   -- uvx --from git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git gmc-mcp run
 ```
 
-**Claude Desktop, Cursor, VS Code and others:** add this to the client's MCP
-config (`claude_desktop_config.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, ...):
+**Claude Desktop, Cursor, Gemini CLI, Windsurf** (and VS Code under `servers`)
 
 ```json
 {
@@ -223,214 +143,74 @@ config (`claude_desktop_config.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, ..
       "args": ["--from", "git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git", "gmc-mcp", "run"],
       "env": {
         "GMC_ACCOUNT_ID": "1234567890",
-        "GMC_SERVICE_ACCOUNT_KEY": "/abs/path/to/service-account.json"
+        "GMC_SERVICE_ACCOUNT_KEY": "/abs/path/service-account.json"
       }
     }
   }
 }
 ```
 
-Restart Claude. Ask: *"What account am I connected to?"* — it should call `gmc_describe_server`.
+Desktop apps often can't find `uvx` on the PATH; if the server doesn't start, use
+the full path from `which uvx` as the `command`.
 
-## OAuth instead of a service account
+**Codex** (`~/.codex/config.toml`)
 
-For acting on behalf of an end user (e.g. multi-tenant SaaS):
-
-```bash
-# 1. In GCP, create OAuth client credentials (type: Desktop), download client_secret.json.
-gmc-mcp auth-init --client-secrets ./client_secret.json
-# follow the browser flow; a token JSON is saved to secrets/oauth-token.json.
-
-# 2. Use it
-export GMC_OAUTH_TOKEN=./secrets/oauth-token.json
-gmc-mcp run
+```toml
+[mcp_servers.gmc]
+command = "uvx"
+args = ["--from", "git+https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp.git", "gmc-mcp", "run"]
+env = { GMC_ACCOUNT_ID = "1234567890", GMC_SERVICE_ACCOUNT_KEY = "/abs/path/service-account.json" }
 ```
 
-## Transports
+### 4. Check it works
 
-```bash
-gmc-mcp run                              # stdio (Claude Desktop default)
-gmc-mcp run --transport sse --port 8000  # SSE / HTTP (remote, Docker, hosted)
+Restart or reload the client, then ask it to "which Merchant Center account are you connected to?". It should
+call `gmc_describe_server`.
+
+## Configuration
+
+| Variable | Required | What it does |
+|---|---|---|
+| `GMC_ACCOUNT_ID` | yes | Your 10-digit Merchant Center ID |
+| `GMC_SERVICE_ACCOUNT_KEY` | one of | Path to a service-account JSON key |
+| `GMC_OAUTH_TOKEN` | one of | Path to an OAuth token from `gmc-mcp auth-init` |
+| `GMC_SUBACCOUNT_ID` | no | Sub-account ID when using an advanced (multi-client) account |
+| `GMC_DRY_RUN` | no | `true` logs writes without sending them |
+| `GMC_AUDIT_LOG` | no | Audit log path (default `./logs/audit.jsonl`) |
+| `GMC_PAGE_SIZE` | no | Default list page size (default 100) |
+| `GMC_TIMEOUT` | no | Per-request timeout in seconds (default 30) |
+| `GMC_LOG_LEVEL` | no | `DEBUG`, `INFO`, `WARNING` or `ERROR` |
+| `GMC_TRANSPORT`, `GMC_HOST`, `GMC_PORT` | no | `stdio` (default) or `sse`, and its bind address |
+
+## Example prompts
+
+```text
+Show me my disapproved products and why, and which ones I can request a review for.
 ```
 
-Or via Docker:
-
-```bash
-docker build -t gmc-mcp .
-docker run --rm -p 8000:8000 \
-    -e GMC_ACCOUNT_ID=1234567890 \
-    -v $PWD/secrets:/secrets \
-    -e GMC_SERVICE_ACCOUNT_KEY=/secrets/service-account.json \
-    gmc-mcp
+```text
+Which products had impressions but no clicks last week?
 ```
 
-## Audit log + rollback
-
-Every write logs a JSONL entry to `GMC_AUDIT_LOG` (default: `./logs/audit.jsonl`). Each entry contains:
-
-- `audit_id` — UUID for lookup
-- `op`, `method`, `url`, `request_body`, `response_status`, `response_body`
-- `before` — pre-write snapshot when the tool fetched it (used by `update_*` and `delete_*`)
-- `dry_run` — whether the request was actually sent
-
-Inspect from inside Claude:
-
-```
-> Show me my last 5 GMC writes.
-[gmc_audit_tail(limit=5) → ...]
-
-> Look up audit ID abc123.
-[gmc_audit_lookup(audit_id="abc123") → ...]
-
-> Roll back audit ID abc123, that update was wrong.
-[gmc_rollback(audit_id="abc123", confirm="ROLLBACK") → ...]
+```text
+Raise UK prices by 5% on these 40 SKUs. Use dry-run first and show me the changes.
 ```
 
-## Dry-run
-
-Two ways to enable:
-
-```bash
-GMC_DRY_RUN=true gmc-mcp run
+```text
+Roll back my last change, it was wrong.
 ```
 
-```
-> Set dry-run on and update the price of SKU1 to $19.99.
-[gmc_set_dry_run(enabled=True) → ok]
-[gmc_update_regional_inventory(...) → {"_dry_run": true, ...}]
-```
+## More docs
 
-Reads always go through; only writes are skipped. POST endpoints that don't
-change anything (Reports `search`, Issue Resolution `render*`, Product Studio
-generation) are treated as reads, so they also run in dry-run mode.
+- [All tools](docs/tools.md)
+- [Safety, dry-run and disapprovals](docs/safety-and-disapprovals.md)
+- [Advanced](docs/advanced.md): report query examples, OAuth, HTTP transport, architecture and testing
+- [Agent skill](skills/gmc-mcp/SKILL.md): setup and usage guide for agents
+- [Changelog](CHANGELOG.md)
 
-## Disapprovals: reasons and review requests
+## Contributing and licence
 
-`gmc_disapprovals_overview` gives you everything in one call. It returns your
-disapproved products, most valuable first (by click potential). Each product
-shows:
+Issues and pull requests are welcome on [this repository](https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp). See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
-- why it's disapproved: issue code, affected attribute, severity, whether the
-  fix is yours to make, and where it's disapproved (destination and countries)
-- its review options
-
-A summary counts products per issue so the biggest problems stand out.
-
-The Merchant API has no single "request review" endpoint. Google returns review
-and appeal actions with each rendered issue, and you submit them with
-`triggeraction`. These tools wrap that flow:
-
-1. `gmc_disapprovals_overview` checks disapproved products in bulk, or
-   `gmc_list_review_options(product_id=...)` checks one product (leave out
-   `product_id` for account issues). Each issue shows its review actions,
-   whether they're available now, why not if they aren't (e.g. a review is
-   already pending), the flows to pick from ("I fixed it", "I disagree") and the
-   questions to answer.
-2. `gmc_request_review(action_context, flow_id, answers)` submits the request.
-   It's audited and respects dry-run.
-
-```
-> Show me my disapproved products and why, and which ones I can request a review for.
-[gmc_disapprovals_overview() → 40 products, top reason price_mismatch (18), 6 requestable now]
-
-> I've fixed the price mismatch on SKU1, request a review.
-[gmc_request_review(action_context="...", flow_id="...", answers={"...": true})]
-```
-
-Some issues allow only one review, and a failed review can block new requests
-for several days, so only request a review once the issue is fixed or the
-business disagrees with it. Actions marked `external` have to be done in
-Merchant Center or the Help Center via the returned `url`.
-
-## Reports query examples
-
-Paste into `gmc_query_report`:
-
-```sql
--- Top 50 by clicks last 7 days
-SELECT offer_id, title, clicks, impressions, ctr
-FROM product_performance_view
-WHERE date BETWEEN '2026-04-23' AND '2026-04-30'
-ORDER BY clicks DESC LIMIT 50
-
--- Disapproved products with reason codes
-SELECT id, offer_id, title, item_issues
-FROM product_view
-WHERE aggregated_reporting_context_status = 'NOT_ELIGIBLE_OR_DISAPPROVED'
-
--- You're priced higher than the benchmark
-SELECT offer_id, title, price, benchmark_price
-FROM price_competitiveness_product_view
-WHERE price > benchmark_price LIMIT 100
-```
-
-## Configuration reference
-
-All config is via env vars (or `.env`). CLI flags `--transport`, `--host`, `--port`, `--env` override.
-
-| Var | Required | Default | Notes |
-|---|---|---|---|
-| `GMC_ACCOUNT_ID` | yes | — | 10-digit Merchant Center ID |
-| `GMC_SERVICE_ACCOUNT_KEY` | one of | — | Path to service-account JSON |
-| `GMC_OAUTH_TOKEN` | one of | — | Path to OAuth token JSON |
-| `GMC_SUBACCOUNT_ID` | no | — | When using an MCA |
-| `GMC_AUDIT_LOG` | no | `./logs/audit.jsonl` | Append-only JSONL |
-| `GMC_PAGE_SIZE` | no | `100` | Default list page size |
-| `GMC_TIMEOUT` | no | `30` | Per-request seconds |
-| `GMC_DRY_RUN` | no | `false` | Writes go to audit only |
-| `GMC_LOG_LEVEL` | no | `INFO` | DEBUG/INFO/WARNING/ERROR |
-| `GMC_TRANSPORT` | no | `stdio` | `stdio` or `sse` |
-| `GMC_HOST` | no | `127.0.0.1` | SSE only |
-| `GMC_PORT` | no | `8000` | SSE only |
-
-## Architecture
-
-```
-Claude (any MCP client)
-    │  JSON-RPC over stdio or SSE
-    ▼
-gmc-mcp server  ──►  audit.jsonl
-    │
-    │  HTTP + Bearer token
-    ▼
-merchantapi.googleapis.com  ──►  Google Merchant Center
-```
-
-- `auth.py` — `ServiceAccountAuth` and `OAuthUserAuth` share an `Auth` protocol.
-- `client.py` — single `MerchantClient` with retries (5x w/ jitter), pagination helper, and write-audit hook.
-- `tools/*.py` — each module exposes a `register(mcp, client)` that registers `@mcp.tool()` functions.
-- `audit.py` — append-only JSONL, lookup by ID, supports `before` snapshots.
-- `cli.py` — `gmc-mcp run | auth-init | register-gcp | webhook | describe | version`.
-
-## Testing
-
-```bash
-pytest                       # 100% offline; uses respx to mock HTTP
-pytest --cov=gmc_mcp         # with coverage
-ruff check src tests
-mypy src/gmc_mcp
-```
-
-## Roadmap
-
-- v0.3: webhook handler scaffolding (auto-respond to `gmc_subscribe` callbacks)
-- v0.3: native Merchant API v1 GA migration when Google releases it
-- v0.4: BigQuery export of Reports queries
-- v0.4: rule-based auto-fixers ("on disapproval, retry with corrected attribute")
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). PRs and issues welcome — this is the
-first open-source MCP for Google Merchant Center, so there's a lot of room
-for community input on which workflows deserve dedicated tools.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
----
-
-*Search keywords: Google Merchant Center MCP, GMC MCP, Merchant API MCP,
-Google Shopping MCP, Shopping Ads MCP, free listings MCP, Claude Desktop
-Google Merchant Center, MCP for ecommerce, Shopify Google Merchant Center
-automation.*
+Licensed under the [MIT License](LICENSE). Based on [kiwoongeom/gmc-mcp](https://github.com/kiwoongeom/gmc-mcp) by eric.eom.
