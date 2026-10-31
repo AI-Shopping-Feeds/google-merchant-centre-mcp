@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 
+from . import __version__
 from ._logging import get_logger
 from .audit import AuditLog
 from .auth import Auth
@@ -36,7 +37,7 @@ class MerchantClient:
         self.audit = audit
         self._http = httpx.Client(
             timeout=config.timeout,
-            headers={"User-Agent": "gmc-mcp/0.1.0"},
+            headers={"User-Agent": f"gmc-mcp/{__version__}"},
         )
 
     def close(self) -> None:

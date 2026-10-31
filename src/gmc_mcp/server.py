@@ -11,15 +11,24 @@ from typing import Any
 import httpx
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp.types import ToolAnnotations
 
-from . import tools
+from . import __version__, tools
 from ._logging import configure_default, get_logger
 from .audit import AuditLog
 from .auth import load_auth
 from .client import MerchantAPIError, MerchantClient
 from .config import Config, load_config
+from .tool_catalog import TOOL_SPECS
 
 logger = get_logger("server")
+
+INSTRUCTIONS = """\
+Google Merchant Center (Merchant API v1): products, inventory, feeds, issues, reports, promotions, settings.
+Start with gmc_describe_server and gmc_health_check; for disapprovals, gmc_disapprovals_overview.
+Writes hit the live account. Rehearse with dry-run (gmc_set_dry_run or GMC_DRY_RUN): logged, not sent.
+Bulk/batch tools, gmc_delete_account and gmc_rollback need confirm (e.g. 'DELETE'); other deletes don't.
+Every write goes to an audit log (gmc_audit_tail); gmc_rollback undoes one that has a before snapshot."""
 
 # Errors whose message helps the agent fix the call (bad arguments, a refusal
 # such as a missing confirm, Merchant API errors, permissions or config problems).
@@ -60,11 +69,36 @@ def _as_tool_error(fn):
 
 
 class GmcMCPServer(MCPServer):
-    """MCPServer whose tools report expected errors to the client."""
+    """MCPServer whose tools report expected errors to the client.
 
-    def tool(self, *args: Any, **kwargs: Any):
-        register = super().tool(*args, **kwargs)
-        return lambda fn: register(_as_tool_error(fn))
+    Each tool gets its title and annotations from `tool_catalog.TOOL_SPECS`
+    unless the decorator passes them.
+    """
+
+    def tool(  # type: ignore[override]
+        self,
+        name: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        annotations: ToolAnnotations | None = None,
+        **kwargs: Any,
+    ):
+        def decorator(fn):
+            tool_name = name or fn.__name__
+            spec = TOOL_SPECS.get(tool_name)
+            tool_title = title or (spec.title if spec else None)
+            tool_annotations = annotations or (spec.annotations if spec else None)
+            register = super(GmcMCPServer, self).tool(
+                name=name,
+                title=tool_title,
+                description=description,
+                annotations=tool_annotations,
+                **kwargs,
+            )
+            register(_as_tool_error(fn))
+            return fn
+
+        return decorator
 
 
 def build_server(config: Config | None = None, env_file: Path | None = None) -> MCPServer:
@@ -88,7 +122,12 @@ def build_server(config: Config | None = None, env_file: Path | None = None) -> 
         config.dry_run,
     )
 
-    mcp = GmcMCPServer("gmc-mcp")
+    mcp = GmcMCPServer(
+        "gmc-mcp",
+        title="Google Merchant Center",
+        version=__version__,
+        instructions=INSTRUCTIONS,
+    )
 
     @mcp.tool()
     def gmc_describe_server() -> dict[str, Any]:
@@ -103,6 +142,7 @@ def build_server(config: Config | None = None, env_file: Path | None = None) -> 
             "page_size": config.page_size,
             "timeout": config.timeout,
             "transport": config.transport,
+            "version": __version__,
         }
 
     @mcp.tool()
