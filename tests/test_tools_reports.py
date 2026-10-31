@@ -16,9 +16,7 @@ def _build(client: MerchantClient) -> dict:
 
 @respx.mock
 def test_query_report(client: MerchantClient) -> None:
-    respx.post(
-        f"{BASE_URL}/reports/v1/accounts/1234567890/reports:search"
-    ).mock(
+    respx.post(f"{BASE_URL}/reports/v1/accounts/1234567890/reports:search").mock(
         return_value=httpx.Response(
             200,
             json={"results": [{"productView": {"offerId": "SKU1"}}]},
@@ -32,9 +30,7 @@ def test_query_report(client: MerchantClient) -> None:
 
 @respx.mock
 def test_zero_click_products(client: MerchantClient) -> None:
-    respx.post(
-        f"{BASE_URL}/reports/v1/accounts/1234567890/reports:search"
-    ).mock(
+    respx.post(f"{BASE_URL}/reports/v1/accounts/1234567890/reports:search").mock(
         return_value=httpx.Response(
             200,
             json={"results": [{"productPerformanceView": {"offerId": "DUD"}}]},

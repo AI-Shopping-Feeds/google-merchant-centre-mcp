@@ -406,9 +406,7 @@ def test_delete_local_and_regional_inventory(client: MerchantClient) -> None:
         return_value=httpx.Response(200, json={"regionalInventories": [{"region": "R1"}]})
     )
     local = respx.delete(f"{base}/localInventories/S1").mock(return_value=httpx.Response(204))
-    regional = respx.delete(f"{base}/regionalInventories/R1").mock(
-        return_value=httpx.Response(204)
-    )
+    regional = respx.delete(f"{base}/regionalInventories/R1").mock(return_value=httpx.Response(204))
     fns = _build(inventory, client)
     fns["gmc_delete_local_inventory"](product_id=pid, store_code="S1")
     fns["gmc_delete_regional_inventory"](product_id=pid, region="R1")
@@ -517,9 +515,7 @@ def test_gbp_and_lfp_provider_links(client: MerchantClient) -> None:
     fns["gmc_link_gbp_account"](gbp_email="owner@example.com")
     assert _body(gbp) == {"gbpEmail": "owner@example.com"}
     assert fns["gmc_find_lfp_providers"](region_code="US")["count"] == 1
-    fns["gmc_link_lfp_provider"](
-        region_code="US", lfp_provider_id="123", external_account_id="m-1"
-    )
+    fns["gmc_link_lfp_provider"](region_code="US", lfp_provider_id="123", external_account_id="m-1")
     assert _body(link) == {"externalAccountId": "m-1"}
 
 
@@ -533,9 +529,7 @@ def test_notification_get_and_update(client: MerchantClient) -> None:
     route = respx.patch(path).mock(return_value=httpx.Response(200, json={}))
     fns = _build(notifications, client)
     assert fns["gmc_get_subscription"](subscription_id="7")["callBackUri"] == "https://old"
-    fns["gmc_update_subscription"](
-        subscription_id="7", subscription={"callBackUri": "https://new"}
-    )
+    fns["gmc_update_subscription"](subscription_id="7", subscription={"callBackUri": "https://new"})
     assert route.calls.last.request.url.params["updateMask"] == "callBackUri"
     assert _audit_entries(client)[-1]["before"] == {"callBackUri": "https://old"}
 
@@ -610,9 +604,7 @@ def test_batch_regions(client: MerchantClient) -> None:
     delete = respx.post(f"{base}:batchDelete").mock(return_value=httpx.Response(200, json={}))
     respx.get(f"{base}/a").mock(return_value=httpx.Response(200, json={"displayName": "A"}))
     fns = _build(regions, client)
-    fns["gmc_batch_create_regions"](
-        regions=[{"regionId": "a", "region": {"displayName": "A"}}]
-    )
+    fns["gmc_batch_create_regions"](regions=[{"regionId": "a", "region": {"displayName": "A"}}])
     assert _body(create) == {"requests": [{"regionId": "a", "region": {"displayName": "A"}}]}
     fns["gmc_batch_update_regions"](
         updates=[{"region_id": "a", "region": {"displayName": "B"}, "update_mask": "displayName"}]
@@ -776,5 +768,9 @@ def test_build_server_registers_every_tool(config, monkeypatch) -> None:
     mcp = server.build_server(config)
     names = set(mcp._tool_manager._tools)
     assert len(names) == 166  # 162 module tools + 4 meta tools
-    assert {"gmc_render_account_issues", "gmc_create_order_tracking_signal",
-            "gmc_upscale_product_image", "gmc_describe_server"} <= names
+    assert {
+        "gmc_render_account_issues",
+        "gmc_create_order_tracking_signal",
+        "gmc_upscale_product_image",
+        "gmc_describe_server",
+    } <= names

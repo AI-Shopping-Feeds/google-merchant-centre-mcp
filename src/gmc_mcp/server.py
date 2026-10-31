@@ -2,20 +2,69 @@
 
 from __future__ import annotations
 
+import functools
+import inspect
 import json
 from pathlib import Path
 from typing import Any
 
+import httpx
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 
 from . import tools
 from ._logging import configure_default, get_logger
 from .audit import AuditLog
 from .auth import load_auth
-from .client import MerchantClient
+from .client import MerchantAPIError, MerchantClient
 from .config import Config, load_config
 
 logger = get_logger("server")
+
+# Errors whose message helps the agent fix the call (bad arguments, a refusal
+# such as a missing confirm, Merchant API errors, permissions or config problems).
+_EXPECTED_ERRORS = (
+    ValueError,
+    RuntimeError,
+    PermissionError,
+    FileNotFoundError,
+    MerchantAPIError,
+    httpx.HTTPError,
+)
+
+
+def _as_tool_error(fn):
+    """Re-raises expected errors as ToolError so MCP SDK 2 shows their message.
+
+    SDK 2 hides the text of any other exception from the client.
+    """
+    if inspect.iscoroutinefunction(fn):
+
+        @functools.wraps(fn)
+        async def async_wrapper(*args, **kwargs):
+            try:
+                return await fn(*args, **kwargs)
+            except _EXPECTED_ERRORS as exc:
+                raise ToolError(str(exc)) from exc
+
+        return async_wrapper
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except _EXPECTED_ERRORS as exc:
+            raise ToolError(str(exc)) from exc
+
+    return wrapper
+
+
+class GmcMCPServer(MCPServer):
+    """MCPServer whose tools report expected errors to the client."""
+
+    def tool(self, *args: Any, **kwargs: Any):
+        register = super().tool(*args, **kwargs)
+        return lambda fn: register(_as_tool_error(fn))
 
 
 def build_server(config: Config | None = None, env_file: Path | None = None) -> MCPServer:
@@ -39,7 +88,7 @@ def build_server(config: Config | None = None, env_file: Path | None = None) -> 
         config.dry_run,
     )
 
-    mcp = MCPServer("gmc-mcp")
+    mcp = GmcMCPServer("gmc-mcp")
 
     @mcp.tool()
     def gmc_describe_server() -> dict[str, Any]:
