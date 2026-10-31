@@ -74,6 +74,8 @@ Other agents that support skills load the same `skills/gmc-mcp` folder from thei
 - Every write is recorded in an append-only audit log with a before-snapshot, and `gmc_rollback` can undo it.
 - Dry-run (`GMC_DRY_RUN=true` or `gmc_set_dry_run`) logs writes without sending them. Reads and reports still work.
 - Destructive bulk and account operations need an explicit `confirm` value, such as `DELETE`.
+- Every tool carries MCP annotations (read-only, destructive, idempotent), so clients can ask before running writes and deletes.
+- Limit what the agent can see with `GMC_TOOL_GROUPS` and `GMC_READ_ONLY` (see Configuration).
 - Details: [docs/safety-and-disapprovals.md](docs/safety-and-disapprovals.md).
 
 ## Supported clients
@@ -87,7 +89,7 @@ Other agents that support skills load the same `skills/gmc-mcp` folder from thei
 | Codex | ✅ | Local server, `~/.codex/config.toml` |
 | Gemini CLI | ✅ | Local server, `~/.gemini/settings.json` |
 | Windsurf and other local clients | ✅ | Local server, same JSON entry |
-| Claude.ai and ChatGPT | ❌ not yet | These need a remote server with sign-in. This server's HTTP mode (`--transport sse`) has no sign-in, so don't expose it publicly. Use a local client. |
+| Claude.ai and ChatGPT | ❌ not yet | These need a remote server with sign-in. This server's HTTP mode (`--transport streamable-http`) has no sign-in, so don't expose it publicly. Use a local client. |
 
 ## Setup
 
@@ -180,7 +182,10 @@ call `gmc_describe_server`.
 | `GMC_PAGE_SIZE` | no | Default list page size (default 100) |
 | `GMC_TIMEOUT` | no | Per-request timeout in seconds (default 30) |
 | `GMC_LOG_LEVEL` | no | `DEBUG`, `INFO`, `WARNING` or `ERROR` |
-| `GMC_TRANSPORT`, `GMC_HOST`, `GMC_PORT` | no | `stdio` (default) or `sse`, and its bind address |
+| `GMC_TOOL_GROUPS` | no | Comma-separated tool groups to register, e.g. `products,issues,reports` (default: all). Groups are the modules in `gmc_mcp/tools`: `products`, `inventory`, `issues`, `reports`, `promotions`, `accounts`, `notifications`, `feeds`, `return_policies`, `homepage`, `account_config`, `quotas`, `reviews`, `conversions`, `omnichannel`, `lfp`, `mca`, `bulk`, `diagnostics`, `regions`, `issue_resolution`, `order_tracking`, `product_studio`. An unknown name stops the server at startup. |
+| `GMC_READ_ONLY` | no | `true` registers only read-only tools. `gmc_describe_server`, the audit tools and `gmc_set_dry_run` are always available |
+| `GMC_TRANSPORT` | no | `stdio` (default), `streamable-http` (served at `http://HOST:PORT/mcp`), or `sse` (deprecated by the MCP spec; logs a warning) |
+| `GMC_HOST`, `GMC_PORT` | no | Bind address for `streamable-http` and `sse` (default `127.0.0.1:8000`). The HTTP transports have no sign-in, so keep them on localhost or a private network |
 
 ## Example prompts
 

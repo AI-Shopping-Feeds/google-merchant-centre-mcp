@@ -8,8 +8,11 @@ import time
 from pathlib import Path
 from typing import Any
 
+from mcp.server.mcpserver import Context
+
 from ..audit import AuditLog
 from ..client import MerchantClient
+from ._progress import report, run_blocking
 
 
 def register(mcp, client: MerchantClient) -> None:
@@ -33,7 +36,12 @@ def register(mcp, client: MerchantClient) -> None:
                 checks.append({"check": name, "ok": True, "ms": int((time.time() - t0) * 1000)})
             except Exception as e:
                 checks.append(
-                    {"check": name, "ok": False, "ms": int((time.time() - t0) * 1000), "error": str(e)[:200]}
+                    {
+                        "check": name,
+                        "ok": False,
+                        "ms": int((time.time() - t0) * 1000),
+                        "error": str(e)[:200],
+                    }
                 )
 
         probe("account", "GET", f"accounts/v1/{acct}")
@@ -108,19 +116,20 @@ def register(mcp, client: MerchantClient) -> None:
         if op.startswith("update_") and method == "PATCH":
             # Re-PATCH with the before snapshot
             relative = url.split("merchantapi.googleapis.com/")[-1]
-            return client.request(
-                "PATCH", relative, json_body=before, op=f"rollback_{op}"
-            )
+            return client.request("PATCH", relative, json_body=before, op=f"rollback_{op}")
 
         return {
             "error": f"Don't know how to rollback op={op}. before snapshot: {json.dumps(before)[:300]}"
         }
 
     @mcp.tool()
-    def gmc_export_all(output_dir: str, max_per_resource: int = 5000) -> dict[str, Any]:
+    async def gmc_export_all(
+        output_dir: str, max_per_resource: int = 5000, ctx: Context | None = None
+    ) -> dict[str, Any]:
         """Dump products, issues, datasources, return policies, account info to JSON files.
 
         Returns a manifest of paths and counts. One file per resource type.
+        Reports progress after each resource.
         """
         out = Path(output_dir).expanduser().resolve()
         out.mkdir(parents=True, exist_ok=True)
@@ -151,30 +160,26 @@ def register(mcp, client: MerchantClient) -> None:
             f.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
             manifest["resources"][name] = {"path": str(f)}
 
-        dump_single("account", f"accounts/v1/{acct}")
-        dump_single("business_info", f"accounts/v1/{acct}/businessInfo")
-        dump_paginated(
-            "account_issues",
-            f"accounts/v1/{acct}/issues",
-            "accountIssues",
-        )
-        dump_paginated("products", f"products/v1/{acct}/products", "products")
-        dump_paginated(
-            "data_sources",
-            f"datasources/v1/{acct}/dataSources",
-            "dataSources",
-        )
-        dump_paginated(
-            "return_policies",
-            f"accounts/v1/{acct}/onlineReturnPolicies",
-            "onlineReturnPolicies",
-        )
-        dump_paginated("users", f"accounts/v1/{acct}/users", "users")
-        dump_paginated(
-            "promotions",
-            f"promotions/v1/{acct}/promotions",
-            "promotions",
-        )
+        steps: list[tuple[Any, tuple[str, ...]]] = [
+            (dump_single, ("account", f"accounts/v1/{acct}")),
+            (dump_single, ("business_info", f"accounts/v1/{acct}/businessInfo")),
+            (dump_paginated, ("account_issues", f"accounts/v1/{acct}/issues", "accountIssues")),
+            (dump_paginated, ("products", f"products/v1/{acct}/products", "products")),
+            (dump_paginated, ("data_sources", f"datasources/v1/{acct}/dataSources", "dataSources")),
+            (
+                dump_paginated,
+                (
+                    "return_policies",
+                    f"accounts/v1/{acct}/onlineReturnPolicies",
+                    "onlineReturnPolicies",
+                ),
+            ),
+            (dump_paginated, ("users", f"accounts/v1/{acct}/users", "users")),
+            (dump_paginated, ("promotions", f"promotions/v1/{acct}/promotions", "promotions")),
+        ]
+        for done, (dump, args) in enumerate(steps, start=1):
+            await run_blocking(dump, *args)
+            await report(ctx, done, len(steps), f"Exported {args[0]}")
         return manifest
 
     @mcp.tool()

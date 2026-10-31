@@ -4,17 +4,21 @@ from __future__ import annotations
 
 from typing import Any
 
+from mcp.server.mcpserver import Context
+
 from ..client import MerchantClient
+from ._progress import report, run_blocking
 
 
 def register(mcp, client: MerchantClient) -> None:
     acct = client.account_path()
 
     @mcp.tool()
-    def gmc_bulk_update_regional_prices(
+    async def gmc_bulk_update_regional_prices(
         updates: list[dict[str, Any]],
         confirm: str = "",
         stop_on_error: bool = False,
+        ctx: Context | None = None,
     ) -> dict[str, Any]:
         """Bulk-update regional inventory prices.
 
@@ -28,6 +32,8 @@ def register(mcp, client: MerchantClient) -> None:
               "availability": "IN_STOCK"            # optional
             }
         stop_on_error: if True, halt on first failure. If False, continue and report.
+
+        Reports progress after each item.
         """
         if confirm != "APPLY":
             return {
@@ -37,11 +43,13 @@ def register(mcp, client: MerchantClient) -> None:
 
         applied: list[str] = []
         failed: list[dict[str, Any]] = []
-        for u in updates:
+        total = len(updates)
+        for done, u in enumerate(updates, start=1):
             pid = u.get("product_id")
             region = u.get("region")
             if not pid or not region:
                 failed.append({"item": u, "reason": "missing product_id or region"})
+                await report(ctx, done, total, f"Skipped item {done} of {total}")
                 if stop_on_error:
                     break
                 continue
@@ -65,15 +73,18 @@ def register(mcp, client: MerchantClient) -> None:
                 body["regionalInventoryAttributes"] = attrs
 
             try:
-                client.request(
+                await run_blocking(
+                    client.request,
                     "POST",
                     f"inventories/v1/{acct}/products/{pid}/regionalInventories:insert",
                     json_body=body,
                     op="bulk_update_regional_price",
                 )
                 applied.append(f"{pid}@{region}")
+                await report(ctx, done, total, f"Updated {pid}@{region} ({done} of {total})")
             except Exception as e:
                 failed.append({"item": u, "reason": str(e)[:200]})
+                await report(ctx, done, total, f"Failed {pid}@{region} ({done} of {total})")
                 if stop_on_error:
                     break
 
@@ -84,15 +95,17 @@ def register(mcp, client: MerchantClient) -> None:
         }
 
     @mcp.tool()
-    def gmc_bulk_set_availability(
+    async def gmc_bulk_set_availability(
         product_ids: list[str],
         region: str,
         availability: str,
         confirm: str = "",
+        ctx: Context | None = None,
     ) -> dict[str, Any]:
         """Bulk-set availability ('IN_STOCK', 'OUT_OF_STOCK', etc.) for many products.
 
         confirm: must be exactly 'APPLY'.
+        Reports progress after each product.
         """
         if confirm != "APPLY":
             return {
@@ -101,22 +114,24 @@ def register(mcp, client: MerchantClient) -> None:
             }
         applied: list[str] = []
         failed: list[dict[str, Any]] = []
-        for pid in product_ids:
+        total = len(product_ids)
+        for done, pid in enumerate(product_ids, start=1):
             try:
-                client.request(
+                await run_blocking(
+                    client.request,
                     "POST",
                     f"inventories/v1/{acct}/products/{pid}/regionalInventories:insert",
                     json_body={
                         "region": region,
-                        "regionalInventoryAttributes": {
-                            "availability": availability.upper()
-                        },
+                        "regionalInventoryAttributes": {"availability": availability.upper()},
                     },
                     op="bulk_set_availability",
                 )
                 applied.append(pid)
+                await report(ctx, done, total, f"Updated {pid} ({done} of {total})")
             except Exception as e:
                 failed.append({"product_id": pid, "reason": str(e)[:200]})
+                await report(ctx, done, total, f"Failed {pid} ({done} of {total})")
         return {
             "applied_count": len(applied),
             "failed_count": len(failed),

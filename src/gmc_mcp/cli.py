@@ -19,10 +19,12 @@ import click
 from . import __version__
 from ._logging import configure_default, get_logger
 from .auth import SCOPES
-from .config import load_config
+from .config import TRANSPORTS, load_config
 from .server import build_server
 
 logger = get_logger("cli")
+
+_LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
 @click.group(invoke_without_command=True)
@@ -34,20 +36,20 @@ logger = get_logger("cli")
 )
 @click.option(
     "--transport",
-    type=click.Choice(["stdio", "sse"]),
+    type=click.Choice(TRANSPORTS),
     default=None,
-    help="Override GMC_TRANSPORT.",
+    help="Override GMC_TRANSPORT. 'sse' is deprecated; use 'streamable-http'.",
 )
 @click.option(
     "--host",
     default=None,
-    help="Bind host for SSE (default 127.0.0.1).",
+    help="Bind host for streamable-http / sse (default 127.0.0.1).",
 )
 @click.option(
     "--port",
     type=int,
     default=None,
-    help="Bind port for SSE (default 8000).",
+    help="Bind port for streamable-http / sse (default 8000).",
 )
 @click.pass_context
 def cli(
@@ -83,9 +85,22 @@ def run(ctx: click.Context) -> None:
 
     mcp = build_server(config=config)
 
+    if config.transport != "stdio" and config.host not in _LOOPBACK_HOSTS:
+        logger.warning(
+            "binding to %s: the server has no authentication, so anyone who can reach "
+            "this address can use your Merchant Center credentials",
+            config.host,
+        )
     if config.transport == "stdio":
         mcp.run("stdio")
+    elif config.transport == "streamable-http":
+        logger.info("serving streamable HTTP on http://%s:%d/mcp", config.host, config.port)
+        mcp.run("streamable-http", host=config.host, port=config.port)
     elif config.transport == "sse":
+        logger.warning(
+            "the sse transport (HTTP+SSE) is deprecated by the MCP spec; "
+            "use --transport streamable-http instead"
+        )
         mcp.run("sse", host=config.host, port=config.port)
     else:
         raise click.ClickException(f"Unknown transport: {config.transport}")
@@ -127,10 +142,7 @@ def auth_init(secrets_path: Path, output_path: Path, port: int) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(creds.to_json(), encoding="utf-8")
     click.echo(f"Saved token to {output_path}")
-    click.echo(
-        "Set this in your .env: "
-        f"GMC_OAUTH_TOKEN={output_path.resolve()}"
-    )
+    click.echo(f"Set this in your .env: GMC_OAUTH_TOKEN={output_path.resolve()}")
 
 
 @cli.command()
@@ -254,13 +266,17 @@ def describe(ctx: click.Context) -> None:
         "version": __version__,
         "account_id": config.account_id,
         "subaccount_id": config.subaccount_id,
-        "service_account_key": str(config.service_account_key) if config.service_account_key else None,
+        "service_account_key": str(config.service_account_key)
+        if config.service_account_key
+        else None,
         "oauth_token": str(config.oauth_token) if config.oauth_token else None,
         "audit_log": str(config.audit_log),
         "dry_run": config.dry_run,
         "transport": config.transport,
         "host": config.host,
         "port": config.port,
+        "tool_groups": config.tool_groups or "all",
+        "read_only": config.read_only,
     }
     click.echo(json.dumps(info, indent=2, ensure_ascii=False))
 

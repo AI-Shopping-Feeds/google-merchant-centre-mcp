@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from mcp.server.mcpserver import Context
+
 from ..client import MerchantClient
+from ._progress import report, run_blocking
 
 REPORTING_STATUSES = {"ELIGIBLE", "ELIGIBLE_LIMITED", "NOT_ELIGIBLE_OR_DISAPPROVED", "PENDING"}
 
@@ -11,9 +14,7 @@ def _product_key(p: dict[str, Any]) -> tuple[str, str, str]:
     return (p.get("offerId") or "", p.get("feedLabel") or "", p.get("contentLanguage") or "")
 
 
-def _keys_with_status(
-    client: MerchantClient, acct: str, status: str
-) -> set[tuple[str, str, str]]:
+def _keys_with_status(client: MerchantClient, acct: str, status: str) -> set[tuple[str, str, str]]:
     """(offerId, feedLabel, contentLanguage) for every product_view row with `status`."""
     query = (
         "SELECT id, offer_id, feed_label, language_code "
@@ -70,9 +71,7 @@ def register(mcp, client: MerchantClient) -> None:
         Product ID format: channel~contentLanguage~feedLabel~offerId
         e.g. online~en~US~SKU123
         """
-        return client.request(
-            "GET", f"products/v1/{acct}/products/{product_id}"
-        )
+        return client.request("GET", f"products/v1/{acct}/products/{product_id}")
 
     @mcp.tool()
     def gmc_insert_product(product: dict[str, Any], data_source: str) -> dict[str, Any]:
@@ -170,10 +169,11 @@ def register(mcp, client: MerchantClient) -> None:
         return {"deleted": product_id}
 
     @mcp.tool()
-    def gmc_bulk_delete_products(
+    async def gmc_bulk_delete_products(
         confirm: str = "",
         filter_status: str | None = None,
         max_delete: int = 5000,
+        ctx: Context | None = None,
     ) -> dict[str, Any]:
         """Bulk-delete product inputs. DESTRUCTIVE — requires confirm='DELETE'.
 
@@ -187,6 +187,7 @@ def register(mcp, client: MerchantClient) -> None:
         Each product's own `dataSource` field is used as the dataSource query parameter,
         so this works even for orphan products whose source was already deleted.
         Every deletion is recorded in the audit log with `before` snapshot for rollback.
+        Reports progress after each deletion.
         """
         if confirm != "DELETE":
             return {
@@ -202,37 +203,42 @@ def register(mcp, client: MerchantClient) -> None:
                 return {
                     "error": f"filter_status must be one of {sorted(REPORTING_STATUSES)}",
                 }
-            wanted = _keys_with_status(client, acct, status)
+            wanted = await run_blocking(_keys_with_status, client, acct, status)
 
-        # Collect products
-        candidates: list[dict[str, Any]] = []
-        params: dict[str, Any] = {"pageSize": 250}
-        while len(candidates) < max_delete:
-            page = client.request(
-                "GET", f"products/v1/{acct}/products", params=params
-            )
-            for p in page.get("products", []) or []:
-                if wanted is not None and _product_key(p) not in wanted:
-                    continue
-                candidates.append(p)
-                if len(candidates) >= max_delete:
+        def collect_candidates() -> list[dict[str, Any]]:
+            candidates: list[dict[str, Any]] = []
+            params: dict[str, Any] = {"pageSize": 250}
+            while len(candidates) < max_delete:
+                page = client.request("GET", f"products/v1/{acct}/products", params=params)
+                for p in page.get("products", []) or []:
+                    if wanted is not None and _product_key(p) not in wanted:
+                        continue
+                    candidates.append(p)
+                    if len(candidates) >= max_delete:
+                        break
+                token = page.get("nextPageToken")
+                if not token:
                     break
-            token = page.get("nextPageToken")
-            if not token:
-                break
-            params["pageToken"] = token
+                params["pageToken"] = token
+            return candidates
+
+        candidates = await run_blocking(collect_candidates)
+        total = len(candidates)
+        await report(ctx, 0, total, f"Deleting {total} products")
 
         deleted: list[str] = []
         failed: list[dict[str, Any]] = []
-        for p in candidates:
+        for done, p in enumerate(candidates, start=1):
             name = p.get("name", "")
             ds = p.get("dataSource")
             if not name or not ds:
                 failed.append({"name": name, "reason": "missing name or dataSource"})
+                await report(ctx, done, total, f"Skipped {name or 'unnamed product'}")
                 continue
             pid = name.split("/")[-1]
             try:
-                client.request(
+                await run_blocking(
+                    client.request,
                     "DELETE",
                     f"products/v1/{acct}/productInputs/{pid}",
                     params={"dataSource": ds},
@@ -240,8 +246,10 @@ def register(mcp, client: MerchantClient) -> None:
                     before=p,
                 )
                 deleted.append(pid)
+                await report(ctx, done, total, f"Deleted {pid} ({done} of {total})")
             except Exception as e:
                 failed.append({"name": name, "reason": str(e)[:200]})
+                await report(ctx, done, total, f"Failed {pid} ({done} of {total})")
 
         return {
             "scanned": len(candidates),

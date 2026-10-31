@@ -7,10 +7,24 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 DEFAULT_AUDIT_LOG_NAME = "audit.jsonl"
+# "sse" (HTTP+SSE) is deprecated by the MCP spec; prefer "streamable-http".
+TRANSPORTS = ("stdio", "streamable-http", "sse")
 
 
 def _truthy(value: str | None) -> bool:
     return (value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def parse_tool_groups(raw: str | None) -> list[str]:
+    """Split a comma-separated GMC_TOOL_GROUPS value and check every name.
+
+    Names are case-insensitive and may use '-' for '_'. Empty means all groups.
+    """
+    from .tools import resolve_tool_groups  # local: tools imports this module
+
+    names = [p.strip().lower().replace("-", "_") for p in (raw or "").split(",")]
+    names = [n for n in names if n]
+    return resolve_tool_groups(names) if names else []
 
 
 @dataclass
@@ -27,6 +41,10 @@ class Config:
     transport: str = "stdio"
     host: str = "127.0.0.1"
     port: int = 8000
+    # Tool modules to register; empty means all (see gmc_mcp.tools.TOOL_GROUPS).
+    tool_groups: list[str] = field(default_factory=list)
+    # Register only tools annotated read-only (plus the meta tools).
+    read_only: bool = False
     extras: dict[str, str] = field(default_factory=dict)
 
     @property
@@ -58,9 +76,7 @@ def load_config(env_file: Path | None = None) -> Config:
             "  - Add it to .env: GMC_ACCOUNT_ID=1234567890"
         )
     if not account_id.isdigit():
-        raise RuntimeError(
-            f"GMC_ACCOUNT_ID must be numeric, got '{account_id}'."
-        )
+        raise RuntimeError(f"GMC_ACCOUNT_ID must be numeric, got '{account_id}'.")
 
     sa_key = _path_or_none(os.environ.get("GMC_SERVICE_ACCOUNT_KEY"))
     oauth_token = _path_or_none(os.environ.get("GMC_OAUTH_TOKEN"))
@@ -83,18 +99,14 @@ def load_config(env_file: Path | None = None) -> Config:
     if subaccount and not subaccount.isdigit():
         raise RuntimeError(f"GMC_SUBACCOUNT_ID must be numeric, got '{subaccount}'.")
 
-    default_audit = (
-        Path(__file__).resolve().parent.parent.parent / "logs" / DEFAULT_AUDIT_LOG_NAME
-    )
-    audit_path = (
-        _path_or_none(os.environ.get("GMC_AUDIT_LOG")) or default_audit
-    )
+    default_audit = Path(__file__).resolve().parent.parent.parent / "logs" / DEFAULT_AUDIT_LOG_NAME
+    audit_path = _path_or_none(os.environ.get("GMC_AUDIT_LOG")) or default_audit
     audit_path.parent.mkdir(parents=True, exist_ok=True)
 
     transport = os.environ.get("GMC_TRANSPORT", "stdio").strip().lower()
-    if transport not in {"stdio", "sse"}:
+    if transport not in TRANSPORTS:
         raise RuntimeError(
-            f"GMC_TRANSPORT must be 'stdio' or 'sse', got '{transport}'."
+            f"GMC_TRANSPORT must be one of {', '.join(TRANSPORTS)}, got '{transport}'."
         )
 
     try:
@@ -123,4 +135,6 @@ def load_config(env_file: Path | None = None) -> Config:
         transport=transport,
         host=os.environ.get("GMC_HOST", "127.0.0.1"),
         port=port,
+        tool_groups=parse_tool_groups(os.environ.get("GMC_TOOL_GROUPS")),
+        read_only=_truthy(os.environ.get("GMC_READ_ONLY")),
     )

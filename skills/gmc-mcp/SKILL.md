@@ -38,9 +38,11 @@ to **Work with the tools**.
   `uvx` (from [uv](https://docs.astral.sh/uv/)). It needs Python 3.10 or later.
   This works with Claude Code, Claude Desktop, Cursor, Codex, VS Code and any
   client that runs local servers.
-- **Self-hosted over HTTP** (`gmc-mcp run --transport sse`, or the Dockerfile),
-  for a team. Clients then connect to that URL. See the README's Transports
-  section.
+- **Self-hosted over HTTP** (`gmc-mcp run --transport streamable-http`, or the
+  Dockerfile), for a team. Clients then connect to `http://HOST:PORT/mcp`. It
+  has no sign-in, so keep it on localhost or a private network. The older
+  `--transport sse` still works but is deprecated. See docs/advanced.md,
+  Transports.
 
 If `uvx` isn't installed, ask the person before installing uv (`brew install uv`
 on macOS, or see https://docs.astral.sh/uv/getting-started/installation/). Don't
@@ -69,6 +71,18 @@ Ask what the person already has. They need:
   environment variables, or call `gmc_register_gcp` once connected.
 - **Optional `GMC_DRY_RUN=true`:** start in dry-run mode, where writes are
   logged but not sent.
+- **Optional `GMC_READ_ONLY=true`:** register only read-only tools (lists,
+  gets, reports, issue rendering). Suggest it when the person only wants to
+  audit or report, or isn't ready to let the agent change the account.
+- **Optional `GMC_TOOL_GROUPS`:** register only some tool groups, as a
+  comma-separated list of modules, e.g. `products,issues,issue_resolution,reports`.
+  Fewer tools means less context for the agent. Valid groups: `products`,
+  `inventory`, `issues`, `reports`, `promotions`, `accounts`, `notifications`,
+  `feeds`, `return_policies`, `homepage`, `account_config`, `quotas`,
+  `reviews`, `conversions`, `omnichannel`, `lfp`, `mca`, `bulk`,
+  `diagnostics`, `regions`, `issue_resolution`, `order_tracking`,
+  `product_studio`. An unknown name stops the server with the list of valid
+  ones. `gmc_describe_server` and the audit and dry-run tools are always there.
 
 Handle the key file like a password. Never paste its contents into chat, copy
 it into a project or git repository, or commit a config that points to it.
@@ -137,7 +151,8 @@ If it fails, see **Troubleshooting** at the end.
 
 ### Tools (166)
 
-All tools start with `gmc_`. The main groups:
+All tools start with `gmc_`. If `GMC_TOOL_GROUPS` or `GMC_READ_ONLY` is set you
+see only some of them; `gmc_describe_server` shows which. The main groups:
 
 - **Products:** `list_products`, `get_product`, `insert_product` (full
   overwrite), `update_product`, `patch_product` (only the fields in
@@ -183,8 +198,10 @@ versions, which Google may change.
 ### Safety rules
 
 - Never write without the user's explicit go-ahead for that specific change.
-- Destructive tools require a `confirm` string (`DELETE`, `ROLLBACK`, ...).
-  Only pass it after the user has confirmed in this conversation.
+- Bulk tools, `gmc_delete_account` and `gmc_rollback` require a `confirm`
+  string (`APPLY`, `DELETE`, `ROLLBACK`). Only pass it after the user has
+  confirmed in this conversation. Other deletes run straight away: their
+  annotations mark them destructive, so confirm with the user first.
 - `gmc_bulk_delete_products` with no `filter_status` deletes everything; always
   set `max_delete` and a filter unless the user explicitly wants a full wipe.
 - Price, availability, shipping, and return-policy changes affect what shoppers

@@ -6,12 +6,12 @@
     "url": "https://github.com/AI-Shopping-Feeds/google-merchant-centre-mcp",
     "source": "github"
   },
-  "version": "0.3.0",
+  "version": "0.4.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "google-merchant-centre-mcp",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "transport": {
         "type": "stdio"
       },
@@ -59,6 +59,21 @@
           "format": "string",
           "isSecret": false,
           "default": "INFO"
+        },
+        {
+          "name": "GMC_TOOL_GROUPS",
+          "description": "Comma-separated tool groups (modules) to register, e.g. 'products,issues,reports'. Empty means all.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "GMC_READ_ONLY",
+          "description": "When 'true', only read-only tools are registered (plus describe, audit and dry-run tools).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "default": "false"
         }
       ]
     }

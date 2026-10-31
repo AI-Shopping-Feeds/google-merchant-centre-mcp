@@ -3,6 +3,7 @@ paths, and read-only POST handling. All HTTP is mocked with respx."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 
 import httpx
@@ -156,8 +157,10 @@ def test_bulk_delete_filter_status_only_deletes_matches(client: MerchantClient) 
         return_value=httpx.Response(204)
     )
     fns = _build(products, client)
-    out = fns["gmc_bulk_delete_products"](
-        confirm="DELETE", filter_status="NOT_ELIGIBLE_OR_DISAPPROVED"
+    out = asyncio.run(
+        fns["gmc_bulk_delete_products"](
+            confirm="DELETE", filter_status="NOT_ELIGIBLE_OR_DISAPPROVED"
+        )
     )
     assert out["deleted_count"] == 1
     assert bad.called and not good.called
@@ -165,7 +168,9 @@ def test_bulk_delete_filter_status_only_deletes_matches(client: MerchantClient) 
 
 def test_bulk_delete_rejects_unknown_status(client: MerchantClient) -> None:
     fns = _build(products, client)
-    out = fns["gmc_bulk_delete_products"](confirm="DELETE", filter_status="X' OR '1'='1")
+    out = asyncio.run(
+        fns["gmc_bulk_delete_products"](confirm="DELETE", filter_status="X' OR '1'='1")
+    )
     assert "filter_status must be one of" in out["error"]
 
 

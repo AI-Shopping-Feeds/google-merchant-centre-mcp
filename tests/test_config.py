@@ -23,6 +23,8 @@ def _setup_env(monkeypatch: pytest.MonkeyPatch, sa_key: Path, **overrides: str) 
     monkeypatch.delenv("GMC_SUBACCOUNT_ID", raising=False)
     monkeypatch.delenv("GMC_TRANSPORT", raising=False)
     monkeypatch.delenv("GMC_DRY_RUN", raising=False)
+    monkeypatch.delenv("GMC_TOOL_GROUPS", raising=False)
+    monkeypatch.delenv("GMC_READ_ONLY", raising=False)
     for k, v in overrides.items():
         monkeypatch.setenv(k, v)
 
@@ -100,3 +102,51 @@ def test_truthy_dry_run(tmp_path: Path, empty_env: Path, monkeypatch: pytest.Mon
     for value in ("false", "0", "no", ""):
         _setup_env(monkeypatch, sa, GMC_DRY_RUN=value)
         assert load_config(env_file=empty_env).dry_run is False
+
+
+def test_tool_groups_default_to_all(
+    tmp_path: Path, empty_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sa = tmp_path / "sa.json"
+    sa.write_text("{}")
+    _setup_env(monkeypatch, sa)
+    cfg = load_config(env_file=empty_env)
+    assert cfg.tool_groups == []
+    assert cfg.read_only is False
+
+
+def test_tool_groups_are_parsed_in_registration_order(
+    tmp_path: Path, empty_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sa = tmp_path / "sa.json"
+    sa.write_text("{}")
+    _setup_env(
+        monkeypatch,
+        sa,
+        GMC_TOOL_GROUPS=" Reports, products ,issue-resolution,,",
+        GMC_READ_ONLY="true",
+    )
+    cfg = load_config(env_file=empty_env)
+    assert cfg.tool_groups == ["products", "reports", "issue_resolution"]
+    assert cfg.read_only is True
+
+
+def test_unknown_tool_group_lists_valid_groups(
+    tmp_path: Path, empty_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sa = tmp_path / "sa.json"
+    sa.write_text("{}")
+    _setup_env(monkeypatch, sa, GMC_TOOL_GROUPS="products,widgets")
+    with pytest.raises(RuntimeError, match="unknown group\\(s\\): widgets") as exc_info:
+        load_config(env_file=empty_env)
+    assert "Valid groups: account_config, accounts," in str(exc_info.value)
+
+
+@pytest.mark.parametrize("transport", ["stdio", "streamable-http", "sse", "Streamable-HTTP"])
+def test_supported_transports(
+    tmp_path: Path, empty_env: Path, monkeypatch: pytest.MonkeyPatch, transport: str
+) -> None:
+    sa = tmp_path / "sa.json"
+    sa.write_text("{}")
+    _setup_env(monkeypatch, sa, GMC_TRANSPORT=transport)
+    assert load_config(env_file=empty_env).transport == transport.lower()
