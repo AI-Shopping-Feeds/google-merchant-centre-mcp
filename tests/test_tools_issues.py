@@ -2,23 +2,21 @@ from __future__ import annotations
 
 import httpx
 import respx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from gmc_mcp.client import BASE_URL, MerchantClient
 from gmc_mcp.tools import issues
 
 
 def _build(client: MerchantClient) -> dict:
-    mcp = FastMCP("test")
+    mcp = MCPServer("test")
     issues.register(mcp, client)
     return {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}
 
 
 @respx.mock
 def test_list_account_issues(client: MerchantClient) -> None:
-    respx.get(
-        f"{BASE_URL}/accounts/v1/accounts/1234567890/issues"
-    ).mock(
+    respx.get(f"{BASE_URL}/accounts/v1/accounts/1234567890/issues").mock(
         return_value=httpx.Response(
             200,
             json={
@@ -37,9 +35,7 @@ def test_list_account_issues(client: MerchantClient) -> None:
 @respx.mock
 def test_summarize_product_issues(client: MerchantClient) -> None:
     """v1 itemIssues schema: type.code, severity.aggregatedSeverity, resolution."""
-    respx.post(
-        f"{BASE_URL}/reports/v1/accounts/1234567890/reports:search"
-    ).mock(
+    respx.post(f"{BASE_URL}/reports/v1/accounts/1234567890/reports:search").mock(
         return_value=httpx.Response(
             200,
             json={

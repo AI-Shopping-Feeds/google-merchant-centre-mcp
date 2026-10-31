@@ -9,7 +9,7 @@ import json
 import httpx
 import pytest
 import respx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from gmc_mcp.client import BASE_URL, MerchantClient
 from gmc_mcp.tools import issue_resolution
@@ -102,7 +102,7 @@ RENDERED = {
 
 
 def _build(client: MerchantClient) -> dict:
-    mcp = FastMCP("test")
+    mcp = MCPServer("test")
     issue_resolution.register(mcp, client)
     return {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}
 
