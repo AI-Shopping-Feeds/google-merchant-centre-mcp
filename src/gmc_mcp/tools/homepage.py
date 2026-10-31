@@ -17,11 +17,7 @@ def register(mcp, client: MerchantClient) -> None:
     @mcp.tool()
     def gmc_update_homepage(uri: str, update_mask: str = "uri") -> dict[str, Any]:
         """Update the homepage URI. update_mask defaults to 'uri'."""
-        before = None
-        try:
-            before = client.request("GET", base)
-        except Exception:
-            pass
+        before = client.snapshot(base)
         return client.request(
             "PATCH",
             base,
@@ -45,4 +41,7 @@ def register(mcp, client: MerchantClient) -> None:
     @mcp.tool()
     def gmc_unclaim_homepage() -> dict[str, Any]:
         """Release the homepage claim."""
-        return client.request("POST", f"{base}:unclaim", op="unclaim_homepage")
+        before = client.snapshot(base)
+        return client.request(
+            "POST", f"{base}:unclaim", json_body={}, op="unclaim_homepage", before=before
+        )

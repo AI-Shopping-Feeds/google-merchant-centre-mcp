@@ -102,5 +102,8 @@ def build_server(config: Config | None = None, env_file: Path | None = None) -> 
     tools.bulk.register(mcp, client)
     tools.diagnostics.register(mcp, client)
     tools.regions.register(mcp, client)
+    tools.issue_resolution.register(mcp, client)
+    tools.order_tracking.register(mcp, client)
+    tools.product_studio.register(mcp, client)
 
     return mcp

@@ -8,6 +8,7 @@ from ..client import MerchantClient
 def register(mcp, client: MerchantClient) -> None:
     acct = client.account_path()
     base = f"accounts/v1/{acct}/onlineReturnPolicies"
+    beta_base = f"accounts/v1beta/{acct}/onlineReturnPolicies"
 
     @mcp.tool()
     def gmc_list_return_policies(max_pages: int = 5) -> dict[str, Any]:
@@ -51,16 +52,17 @@ def register(mcp, client: MerchantClient) -> None:
     def gmc_update_return_policy(
         policy_id: str, policy: dict[str, Any], update_mask: str | None = None
     ) -> dict[str, Any]:
-        """Patch an existing return policy. update_mask is a comma-separated FieldMask."""
-        before = None
-        try:
-            before = client.request("GET", f"{base}/{policy_id}")
-        except Exception:
-            pass
+        """[v1beta] Patch an existing return policy. update_mask is a comma-separated FieldMask.
+
+        Merchant API v1 has no onlineReturnPolicies.patch, so this calls the v1beta
+        endpoint (accounts/v1beta/.../onlineReturnPolicies/{id}). v1beta may change
+        or be retired; the v1 alternative is delete + create.
+        """
+        before = client.snapshot(f"{base}/{policy_id}")
         params = {"updateMask": update_mask} if update_mask else None
         return client.request(
             "PATCH",
-            f"{base}/{policy_id}",
+            f"{beta_base}/{policy_id}",
             params=params,
             json_body=policy,
             op="update_return_policy",
@@ -70,10 +72,6 @@ def register(mcp, client: MerchantClient) -> None:
     @mcp.tool()
     def gmc_delete_return_policy(policy_id: str) -> dict[str, Any]:
         """Delete a return policy."""
-        before = None
-        try:
-            before = client.request("GET", f"{base}/{policy_id}")
-        except Exception:
-            pass
+        before = client.snapshot(f"{base}/{policy_id}")
         client.request("DELETE", f"{base}/{policy_id}", op="delete_return_policy", before=before)
         return {"deleted": policy_id}

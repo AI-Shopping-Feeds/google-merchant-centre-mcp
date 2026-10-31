@@ -5,7 +5,6 @@ from __future__ import annotations
 import csv
 import json
 import time
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +29,7 @@ def register(mcp, client: MerchantClient) -> None:
         ) -> None:
             t0 = time.time()
             try:
-                client.request(method, path, params=params, json_body=json_body)
+                client.request(method, path, params=params, json_body=json_body, read_only=True)
                 checks.append({"check": name, "ok": True, "ms": int((time.time() - t0) * 1000)})
             except Exception as e:
                 checks.append(
@@ -59,6 +58,8 @@ def register(mcp, client: MerchantClient) -> None:
 
         confirm: must be 'ROLLBACK' (case-sensitive).
         Only works for ops that captured a `before` state (update_*, delete_*, etc.)
+        Product writes (delete/update/patch_product) are rolled back by re-inserting the
+        `before` snapshot into its original data source.
         """
         if confirm != "ROLLBACK":
             return {
@@ -73,7 +74,7 @@ def register(mcp, client: MerchantClient) -> None:
         before = entry.get("before")
         if not before:
             return {
-                "error": f"Audit entry has no `before` snapshot — cannot rollback.",
+                "error": "Audit entry has no `before` snapshot — cannot rollback.",
                 "op": entry.get("op"),
             }
         op = entry.get("op", "")
@@ -81,7 +82,10 @@ def register(mcp, client: MerchantClient) -> None:
         method = entry.get("method", "")
 
         # Strategy by op type
-        if op in {"delete_product", "bulk_delete_product"} and "productInputs" in url:
+        if (
+            op in {"delete_product", "bulk_delete_product", "update_product", "patch_product"}
+            and "productInputs" in url
+        ):
             ds = before.get("dataSource")
             if not ds:
                 return {"error": "Original product had no dataSource; cannot recreate."}

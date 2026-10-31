@@ -31,6 +31,7 @@ def register(mcp, client: MerchantClient) -> None:
                 f"reports/v1/{acct}/reports:search",
                 params=params,
                 json_body=body,
+                read_only=True,
             )
             results.extend(payload.get("results", []) or [])
             page_count += 1
@@ -161,6 +162,7 @@ def _run(client: MerchantClient, acct: str, query: str) -> dict[str, Any]:
         "POST",
         f"reports/v1/{acct}/reports:search",
         json_body={"query": query},
+        read_only=True,
     )
     return {
         "query": query,

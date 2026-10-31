@@ -10,16 +10,23 @@ def register(mcp, client: MerchantClient) -> None:
     acct = client.account_path()
 
     @mcp.tool()
-    def gmc_list_account_issues(language_code: str = "en") -> dict[str, Any]:
+    def gmc_list_account_issues(
+        language_code: str = "en", time_zone: str | None = None
+    ) -> dict[str, Any]:
         """List all account-level issues (policy, missing settings, etc).
 
         language_code: BCP-47 code for issue messages (default 'en').
+        time_zone: optional IANA time zone used to localise times in messages
+            (e.g. 'America/New_York'); defaults to UTC.
         """
+        params: dict[str, Any] = {"languageCode": language_code}
+        if time_zone:
+            params["timeZone"] = time_zone
         items = list(
             client.paginate(
                 "GET",
                 f"accounts/v1/{acct}/issues",
-                params={"languageCode": language_code},
+                params=params,
                 items_key="accountIssues",
             )
         )
@@ -59,7 +66,7 @@ def register(mcp, client: MerchantClient) -> None:
         body: dict[str, Any] = {"query": query}
         path = f"reports/v1/{acct}/reports:search"
         while len(items) < max_products:
-            payload = client.request("POST", path, json_body=body)
+            payload = client.request("POST", path, json_body=body, read_only=True)
             items.extend(payload.get("results", []) or [])
             token = payload.get("nextPageToken")
             if not token:

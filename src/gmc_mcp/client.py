@@ -28,7 +28,7 @@ class MerchantAPIError(Exception):
 
 
 class MerchantClient:
-    """Thin HTTP wrapper over Merchant API v1beta. Handles auth, retries, paging, audit."""
+    """Thin HTTP wrapper over Merchant API v1. Handles auth, retries, paging, audit."""
 
     def __init__(self, config: Config, auth: Auth, audit: AuditLog):
         self.config = config
@@ -60,10 +60,16 @@ class MerchantClient:
         json_body: Any | None = None,
         op: str | None = None,
         before: Any | None = None,
+        read_only: bool = False,
     ) -> Any:
-        """Perform a single Merchant API request. Returns parsed JSON or {} for 204."""
+        """Perform a single Merchant API request. Returns parsed JSON or {} for 204.
+
+        read_only: set True for POST endpoints that don't mutate state (e.g.
+        reports:search, issueresolution render*). They then bypass dry-run and
+        are not written to the audit log.
+        """
         url = f"{BASE_URL}/{path.lstrip('/')}"
-        is_write = method.upper() in WRITE_METHODS
+        is_write = method.upper() in WRITE_METHODS and not read_only
 
         if is_write and self.config.dry_run:
             audit_id = self.audit.record(
@@ -173,8 +179,7 @@ class MerchantClient:
         page_count = 0
         while True:
             payload = self.request(method, path, params=params)
-            for item in payload.get(items_key, []) or []:
-                yield item
+            yield from payload.get(items_key, []) or []
             page_count += 1
             token = payload.get("nextPageToken")
             if not token:
@@ -182,6 +187,16 @@ class MerchantClient:
             if max_pages is not None and page_count >= max_pages:
                 return
             params["pageToken"] = token
+
+    def snapshot(self, path: str, params: dict[str, Any] | None = None) -> Any | None:
+        """Best-effort GET used to capture a `before` snapshot for the audit log.
+
+        Returns None instead of raising, so a failed snapshot never blocks a write.
+        """
+        try:
+            return self.request("GET", path, params=params)
+        except Exception:
+            return None
 
     @staticmethod
     def _safe_json(resp: httpx.Response) -> Any:

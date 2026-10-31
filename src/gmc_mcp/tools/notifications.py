@@ -53,9 +53,36 @@ def register(mcp, client: MerchantClient) -> None:
     @mcp.tool()
     def gmc_unsubscribe(subscription_id: str) -> dict[str, Any]:
         """Delete a notification subscription by ID."""
-        client.request(
-            "DELETE",
-            f"notifications/v1/{acct}/notificationsubscriptions/{subscription_id}",
-            op="delete_subscription",
-        )
+        path = f"notifications/v1/{acct}/notificationsubscriptions/{subscription_id}"
+        before = client.snapshot(path)
+        client.request("DELETE", path, op="delete_subscription", before=before)
         return {"deleted": subscription_id}
+
+    @mcp.tool()
+    def gmc_get_subscription(subscription_id: str) -> dict[str, Any]:
+        """Get one notification subscription by ID."""
+        return client.request(
+            "GET", f"notifications/v1/{acct}/notificationsubscriptions/{subscription_id}"
+        )
+
+    @mcp.tool()
+    def gmc_update_subscription(
+        subscription_id: str,
+        subscription: dict[str, Any],
+        update_mask: str = "callBackUri",
+    ) -> dict[str, Any]:
+        """Patch a notification subscription (e.g. move it to a new callback URL).
+
+        subscription example: {"callBackUri": "https://example.com/gmc-webhook"}
+        update_mask: comma-separated fields, e.g. 'callBackUri'.
+        """
+        path = f"notifications/v1/{acct}/notificationsubscriptions/{subscription_id}"
+        before = client.snapshot(path)
+        return client.request(
+            "PATCH",
+            path,
+            params={"updateMask": update_mask},
+            json_body=subscription,
+            op="update_subscription",
+            before=before,
+        )

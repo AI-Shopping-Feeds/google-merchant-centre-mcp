@@ -1,5 +1,8 @@
 """Account-level configuration: business identity, checkout, automatic improvements,
-autofeed, account tax, email preferences, terms of service."""
+autofeed, email preferences, terms of service.
+
+Note: the Content API `accounttax` resource has no Merchant API v1 equivalent, so
+there are no account-tax tools here."""
 
 from __future__ import annotations
 
@@ -30,11 +33,7 @@ def register(mcp, client: MerchantClient) -> None:
               "promotionsConsent": "PROMOTIONS_CONSENT_GIVEN_FOR_PROMOTIONS"
             }
         """
-        before = None
-        try:
-            before = client.request("GET", f"accounts/v1/{acct}/businessIdentity")
-        except Exception:
-            pass
+        before = client.snapshot(f"accounts/v1/{acct}/businessIdentity")
         params = {"updateMask": update_mask} if update_mask else None
         return client.request(
             "PATCH",
@@ -86,13 +85,7 @@ def register(mcp, client: MerchantClient) -> None:
         update_mask: str | None = None,
     ) -> dict[str, Any]:
         """Patch URI checkout settings (program is always 'checkout' in v1)."""
-        before = None
-        try:
-            before = client.request(
-                "GET", f"accounts/v1/{acct}/programs/{program}/checkoutSettings"
-            )
-        except Exception:
-            pass
+        before = client.snapshot(f"accounts/v1/{acct}/programs/{program}/checkoutSettings")
         params = {"updateMask": update_mask} if update_mask else None
         return client.request(
             "PATCH",
@@ -106,10 +99,12 @@ def register(mcp, client: MerchantClient) -> None:
     @mcp.tool()
     def gmc_delete_checkout_settings(program: str = "checkout") -> dict[str, Any]:
         """Delete URI checkout settings (program defaults to 'checkout')."""
+        before = client.snapshot(f"accounts/v1/{acct}/programs/{program}/checkoutSettings")
         client.request(
             "DELETE",
             f"accounts/v1/{acct}/programs/{program}/checkoutSettings",
             op="delete_checkout_settings",
+            before=before,
         )
         return {"deleted_program_checkout": program}
 
@@ -138,11 +133,7 @@ def register(mcp, client: MerchantClient) -> None:
               "shippingImprovements": {"allowShippingImprovements": True}
             }
         """
-        before = None
-        try:
-            before = client.request("GET", f"accounts/v1/{acct}/automaticImprovements")
-        except Exception:
-            pass
+        before = client.snapshot(f"accounts/v1/{acct}/automaticImprovements")
         params = {"updateMask": update_mask} if update_mask else None
         return client.request(
             "PATCH",
@@ -165,48 +156,13 @@ def register(mcp, client: MerchantClient) -> None:
         enable_products: bool, update_mask: str = "enableProducts"
     ) -> dict[str, Any]:
         """Enable / disable autofeed product crawling."""
-        before = None
-        try:
-            before = client.request("GET", f"accounts/v1/{acct}/autofeedSettings")
-        except Exception:
-            pass
+        before = client.snapshot(f"accounts/v1/{acct}/autofeedSettings")
         return client.request(
             "PATCH",
             f"accounts/v1/{acct}/autofeedSettings",
             params={"updateMask": update_mask},
             json_body={"enableProducts": enable_products},
             op="update_autofeed_settings",
-            before=before,
-        )
-
-    # ---------------- Account tax ----------------
-
-    @mcp.tool()
-    def gmc_get_account_tax() -> dict[str, Any]:
-        """Get US account tax settings."""
-        return client.request("GET", f"accounts/v1/{acct}/accountTax")
-
-    @mcp.tool()
-    def gmc_update_account_tax(
-        tax_rules: list[dict[str, Any]], update_mask: str = "taxRules"
-    ) -> dict[str, Any]:
-        """Update US tax rules. Body example:
-            [
-              {"region": "US-CA", "useGoogleRate": True, "shippingTaxed": False},
-              {"region": "US-NY", "ratePercent": 8.0, "shippingTaxed": True}
-            ]
-        """
-        before = None
-        try:
-            before = client.request("GET", f"accounts/v1/{acct}/accountTax")
-        except Exception:
-            pass
-        return client.request(
-            "PATCH",
-            f"accounts/v1/{acct}/accountTax",
-            params={"updateMask": update_mask},
-            json_body={"taxRules": tax_rules},
-            op="update_account_tax",
             before=before,
         )
 
@@ -227,13 +183,7 @@ def register(mcp, client: MerchantClient) -> None:
         """Update email preferences. preferences example:
             {"newsAndTips": "OPTED_IN"}  # or OPTED_OUT
         """
-        before = None
-        try:
-            before = client.request(
-                "GET", f"accounts/v1/{acct}/users/{email}/emailPreferences"
-            )
-        except Exception:
-            pass
+        before = client.snapshot(f"accounts/v1/{acct}/users/{email}/emailPreferences")
         params = {"updateMask": update_mask} if update_mask else None
         return client.request(
             "PATCH",
@@ -248,42 +198,56 @@ def register(mcp, client: MerchantClient) -> None:
 
     @mcp.tool()
     def gmc_get_latest_tos(region_code: str = "US", kind: str = "MERCHANT_CENTER") -> dict[str, Any]:
-        """Retrieve the latest TermsOfService document.
+        """Retrieve the latest TermsOfService version for a region.
 
+        region_code: CLDR region (country, or '001' for global).
         kind: 'MERCHANT_CENTER' (default).
         """
         return client.request(
             "GET",
-            f"termsOfService/v1/termsOfService:retrieveLatest",
+            "accounts/v1/termsOfService:retrieveLatest",
             params={"regionCode": region_code, "kind": kind},
         )
 
     @mcp.tool()
-    def gmc_list_tos_agreement_states(max_pages: int = 3) -> dict[str, Any]:
-        """List the TOS agreement states for the current account."""
-        items = list(
-            client.paginate(
-                "GET",
-                f"accounts/v1/{acct}/termsOfServiceAgreementStates",
-                items_key="termsOfServiceAgreementStates",
-                max_pages=max_pages,
-            )
-        )
-        return {"count": len(items), "states": items}
+    def gmc_get_tos(tos_name: str) -> dict[str, Any]:
+        """Get a specific TermsOfService version.
+
+        tos_name: 'termsOfService/{version}' (or just the version number).
+        """
+        name = tos_name if tos_name.startswith("termsOfService/") else f"termsOfService/{tos_name}"
+        return client.request("GET", f"accounts/v1/{name}")
 
     @mcp.tool()
-    def gmc_accept_tos(tos_name: str, agreement_state: str | None = None) -> dict[str, Any]:
-        """Accept a TermsOfService.
+    def gmc_get_tos_agreement_state(identifier: str = "MERCHANT_CENTER-US") -> dict[str, Any]:
+        """Get this account's agreement state for one terms-of-service kind + country.
 
-        tos_name: full name of the TermsOfService resource (from gmc_get_latest_tos.name).
-        agreement_state: optional name of an existing agreement-state resource.
+        identifier: '{TermsOfServiceKind}-{country}', e.g. 'MERCHANT_CENTER-US'.
         """
-        params = {"name": tos_name}
-        if agreement_state:
-            params["agreementState"] = agreement_state
+        return client.request(
+            "GET", f"accounts/v1/{acct}/termsOfServiceAgreementStates/{identifier}"
+        )
+
+    @mcp.tool()
+    def gmc_retrieve_tos_agreement_for_application() -> dict[str, Any]:
+        """Get the agreement state for the application (Merchant Center) terms of service."""
+        return client.request(
+            "GET",
+            f"accounts/v1/{acct}/termsOfServiceAgreementStates:retrieveForApplication",
+        )
+
+    @mcp.tool()
+    def gmc_accept_tos(tos_name: str, region_code: str = "US") -> dict[str, Any]:
+        """Accept a TermsOfService version on behalf of this account.
+
+        tos_name: 'termsOfService/{version}' (from gmc_get_latest_tos.name) or the version.
+        region_code: the ToS region (country, or '001' for global); must match the
+            regionCode returned by gmc_get_latest_tos.
+        """
+        name = tos_name if tos_name.startswith("termsOfService/") else f"termsOfService/{tos_name}"
         return client.request(
             "POST",
-            f"termsOfService/v1/{tos_name}:accept",
-            params=params,
+            f"accounts/v1/{name}:accept",
+            params={"account": acct, "regionCode": region_code},
             op="accept_tos",
         )
