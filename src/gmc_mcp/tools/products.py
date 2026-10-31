@@ -11,9 +11,7 @@ def _product_key(p: dict[str, Any]) -> tuple[str, str, str]:
     return (p.get("offerId") or "", p.get("feedLabel") or "", p.get("contentLanguage") or "")
 
 
-def _keys_with_status(
-    client: MerchantClient, acct: str, status: str
-) -> set[tuple[str, str, str]]:
+def _keys_with_status(client: MerchantClient, acct: str, status: str) -> set[tuple[str, str, str]]:
     """(offerId, feedLabel, contentLanguage) for every product_view row with `status`."""
     query = (
         "SELECT id, offer_id, feed_label, language_code "
@@ -70,9 +68,7 @@ def register(mcp, client: MerchantClient) -> None:
         Product ID format: channel~contentLanguage~feedLabel~offerId
         e.g. online~en~US~SKU123
         """
-        return client.request(
-            "GET", f"products/v1/{acct}/products/{product_id}"
-        )
+        return client.request("GET", f"products/v1/{acct}/products/{product_id}")
 
     @mcp.tool()
     def gmc_insert_product(product: dict[str, Any], data_source: str) -> dict[str, Any]:
@@ -208,9 +204,7 @@ def register(mcp, client: MerchantClient) -> None:
         candidates: list[dict[str, Any]] = []
         params: dict[str, Any] = {"pageSize": 250}
         while len(candidates) < max_delete:
-            page = client.request(
-                "GET", f"products/v1/{acct}/products", params=params
-            )
+            page = client.request("GET", f"products/v1/{acct}/products", params=params)
             for p in page.get("products", []) or []:
                 if wanted is not None and _product_key(p) not in wanted:
                     continue
