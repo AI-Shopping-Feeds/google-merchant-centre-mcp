@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — MCP SDK 2
+- Requires `mcp>=2.3.0,<3` (was `<2`). The server is built on the SDK's
+  `MCPServer` (the successor to `mcp.server.fastmcp.FastMCP`, which SDK 2
+  removed). Tools, names and behaviour are unchanged. SSE host and port are now
+  passed to `run()`.
+
 ### Changed — published as this fork
 - PyPI package renamed from `gmc-mcp` to **`google-merchant-centre-mcp`**, and the MCP
   Registry name from `io.github.kiwoongeom/gmc-mcp` to

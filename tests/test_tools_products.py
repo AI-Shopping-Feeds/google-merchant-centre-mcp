@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import httpx
 import respx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from gmc_mcp.client import BASE_URL, MerchantClient
 from gmc_mcp.tools import products
 
 
 def _build(client: MerchantClient) -> dict:
-    """Register tools onto a temp FastMCP and return the underlying functions."""
-    mcp = FastMCP("test")
+    """Register tools onto a temp MCPServer and return the underlying functions."""
+    mcp = MCPServer("test")
     products.register(mcp, client)
-    # FastMCP stores tools in mcp._tool_manager._tools (private but stable enough for unit tests).
+    # MCPServer stores tools in mcp._tool_manager._tools (private but stable enough for unit tests).
     return {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}
 
 

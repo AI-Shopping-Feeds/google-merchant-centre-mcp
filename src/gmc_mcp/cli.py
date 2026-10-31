@@ -86,9 +86,7 @@ def run(ctx: click.Context) -> None:
     if config.transport == "stdio":
         mcp.run("stdio")
     elif config.transport == "sse":
-        mcp.settings.host = config.host
-        mcp.settings.port = config.port
-        mcp.run("sse")
+        mcp.run("sse", host=config.host, port=config.port)
     else:
         raise click.ClickException(f"Unknown transport: {config.transport}")
 

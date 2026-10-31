@@ -8,7 +8,7 @@ import json
 import httpx
 import pytest
 import respx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from gmc_mcp.client import BASE_URL, MerchantClient
 from gmc_mcp.tools import (
@@ -36,7 +36,7 @@ ACCT = "accounts/1234567890"
 
 
 def _build(module, client: MerchantClient) -> dict:
-    mcp = FastMCP("test")
+    mcp = MCPServer("test")
     module.register(mcp, client)
     return {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}
 
@@ -759,12 +759,12 @@ def test_product_studio_requires_image(client: MerchantClient) -> None:
 def test_all_modules_register_unique_gmc_tools(client: MerchantClient) -> None:
     from gmc_mcp import tools
 
-    mcp = FastMCP("test")
+    mcp = MCPServer("test")
     for name in tools.__all__:
         getattr(tools, name).register(mcp, client)
     names = list(mcp._tool_manager._tools)
     assert all(n.startswith("gmc_") for n in names)
-    assert len(names) == 162  # FastMCP drops duplicates, so this also proves uniqueness
+    assert len(names) == 162  # MCPServer drops duplicates, so this also proves uniqueness
 
 
 def test_build_server_registers_every_tool(config, monkeypatch) -> None:

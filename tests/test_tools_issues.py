@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import httpx
 import respx
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from gmc_mcp.client import BASE_URL, MerchantClient
 from gmc_mcp.tools import issues
 
 
 def _build(client: MerchantClient) -> dict:
-    mcp = FastMCP("test")
+    mcp = MCPServer("test")
     issues.register(mcp, client)
     return {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}
 

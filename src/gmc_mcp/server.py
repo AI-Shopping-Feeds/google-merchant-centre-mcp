@@ -1,4 +1,4 @@
-"""Build the FastMCP server. Stays import-light so tests can patch pieces individually."""
+"""Build the MCP server. Stays import-light so tests can patch pieces individually."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from . import tools
 from ._logging import configure_default, get_logger
@@ -18,8 +18,8 @@ from .config import Config, load_config
 logger = get_logger("server")
 
 
-def build_server(config: Config | None = None, env_file: Path | None = None) -> FastMCP:
-    """Construct a FastMCP instance with all gmc_* tools registered."""
+def build_server(config: Config | None = None, env_file: Path | None = None) -> MCPServer:
+    """Construct an MCPServer instance with all gmc_* tools registered."""
     configure_default()
     if config is None:
         config = load_config(env_file=env_file)
@@ -39,7 +39,7 @@ def build_server(config: Config | None = None, env_file: Path | None = None) -> 
         config.dry_run,
     )
 
-    mcp = FastMCP("gmc-mcp")
+    mcp = MCPServer("gmc-mcp")
 
     @mcp.tool()
     def gmc_describe_server() -> dict[str, Any]:
