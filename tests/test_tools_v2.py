@@ -3,6 +3,8 @@ without errors and one representative call hits the right URL."""
 
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 import respx
 from mcp.server.mcpserver import MCPServer
@@ -129,14 +131,18 @@ def test_mca_list_relationships(client: MerchantClient) -> None:
 
 def test_bulk_refuses_without_confirm(client: MerchantClient) -> None:
     fns = _build(bulk, client)
-    out = fns["gmc_bulk_update_regional_prices"](updates=[{"product_id": "x", "region": "US"}])
+    out = asyncio.run(
+        fns["gmc_bulk_update_regional_prices"](updates=[{"product_id": "x", "region": "US"}])
+    )
     assert "Refused" in out["error"]
 
 
 def test_bulk_set_availability_refuses_without_confirm(client: MerchantClient) -> None:
     fns = _build(bulk, client)
-    out = fns["gmc_bulk_set_availability"](
-        product_ids=["x"], region="US", availability="OUT_OF_STOCK"
+    out = asyncio.run(
+        fns["gmc_bulk_set_availability"](
+            product_ids=["x"], region="US", availability="OUT_OF_STOCK"
+        )
     )
     assert "Refused" in out["error"]
 
